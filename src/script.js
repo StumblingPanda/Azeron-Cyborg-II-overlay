@@ -322,8 +322,9 @@ ipcRenderer.on("update-status", (_event, status) => {
         updateStatusText.textContent = "Update ready to install.";
         installUpdateBtn.style.display = "";
         retryUpdateBtn.style.display = "none";
-    } else if (status === "error") {
-        updateStatusText.textContent = "Update failed.";
+    } else if (status.startsWith("error")) {
+        const msg = status.startsWith("error:") ? status.slice(6) : "Unknown error.";
+        updateStatusText.textContent = msg;
         retryUpdateBtn.style.display = "";
     }
 });

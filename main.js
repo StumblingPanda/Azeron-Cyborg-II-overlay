@@ -54,7 +54,7 @@ app.whenReady().then(() => {
         autoUpdater.on('update-available',   () => win?.webContents.send('update-status', 'available'));
         autoUpdater.on('update-downloaded',  () => win?.webContents.send('update-status', 'ready'));
         autoUpdater.on('download-progress',  (p) => win?.webContents.send('update-status', `downloading:${Math.round(p.percent)}`));
-        autoUpdater.on('error', (err) => { console.error('AutoUpdater error:', err); win?.webContents.send('update-status', 'error'); });
+        autoUpdater.on('error', (err) => { console.error('AutoUpdater error:', err); win?.webContents.send('update-status', `error:${err.message}`); });
         // Check for updates 5 seconds after launch so the window is ready
         setTimeout(() => autoUpdater.checkForUpdates(), 5000);
     }
