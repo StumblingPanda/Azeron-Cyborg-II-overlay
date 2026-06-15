@@ -16,5 +16,9 @@ A lightweight Windows overlay that mirrors your Azeron keypad in real time. Live
 ## Usage
 Simply launch the overlay and it will display keypresses in real time using the Cyborg II layout. Use the on-screen options to rename buttons or reassign labels at any time to match your personal binds.
 
+## ⚠️ Important
+By default the overlay fills the screen and will block interaction with windows behind it. 
+Enable the **click-through** option in the overlay settings to interact with other windows normally.
+
 ## License
 MIT
