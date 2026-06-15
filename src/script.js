@@ -469,9 +469,9 @@ document.addEventListener("click", (e) => {
     let startX = parseInt(localStorage.getItem("overlayX")) || 100;
     let startY = parseInt(localStorage.getItem("overlayY")) || 100;
 
-    // If the options button (at left+14, top+174) would be off-screen, reset
-    const optX = startX + 14;
-    const optY = startY + 174;
+    // If the options button (at left+44, top+44) would be off-screen, reset
+    const optX = startX + 44;
+    const optY = startY + 44;
     if (optX < 0 || optY < 0 || optX > currentDisplayBounds.width || optY > currentDisplayBounds.height) {
         startX = 100;
         startY = 100;
