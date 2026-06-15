@@ -33,7 +33,7 @@ jobs:
         run: npm run build:listener
 
       - name: Build app
-        run: npx electron-builder --win
+        run: npx electron-builder --win --publish never
 
       - name: Publish release
         shell: pwsh
