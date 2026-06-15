@@ -1,0 +1,7 @@
+node_modules/
+dist/
+__pycache__/
+*.spec
+build/
+.claude/
+resources/listener.exe
