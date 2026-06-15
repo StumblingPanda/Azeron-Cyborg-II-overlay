@@ -11,7 +11,8 @@ A lightweight Windows overlay that mirrors your Azeron keypad in real time. Live
 ## Installation
 1. Go to the [Releases](../../releases) page
 2. Download the latest `.exe`
-3. Run it — no installation needed
+3. Install
+4. Run it
 
 ## Usage
 Simply launch the overlay and it will display keypresses in real time using the Cyborg II layout. Use the on-screen options to rename buttons or reassign labels at any time to match your personal binds.
