@@ -62,4 +62,4 @@ Then bring it into the overlay:
 
 
 ## License
-MIT
+GPL v3
