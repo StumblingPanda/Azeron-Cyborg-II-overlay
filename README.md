@@ -24,7 +24,7 @@ as a quick visual reference for your binds.
 
 > **⚠️ Important:** The overlay fills the screen by default and will block clicks
 > on windows behind it. Open the settings panel and **Enable Clickthrough** 
-> before trying to interact with any app/window on that monitor.
+> before trying to interact with any other app/window on that monitor.
 
 ## Settings
 
