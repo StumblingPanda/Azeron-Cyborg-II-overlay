@@ -46,6 +46,7 @@ keys as you press them. You can switch profiles at any time from the settings
 panel without restarting.
 
 ## Importing your Azeron profile
+ **Important:** As of right now it only reads software profiles
 
 First, export your profile from the Azeron software:
 
