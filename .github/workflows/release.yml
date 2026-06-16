@@ -41,7 +41,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           $version  = "${{ github.ref_name }}".TrimStart('v')
-          $exe      = "dist\AzeronOverlay Setup $version.exe"
-          $blockmap = "dist\AzeronOverlay Setup $version.exe.blockmap"
+          $exe      = "dist\AzeronOverlay-Setup-$version.exe"
+          $blockmap = "dist\AzeronOverlay-Setup-$version.exe.blockmap"
           $yml      = "dist\latest.yml"
           gh release create "${{ github.ref_name }}" "$exe" "$blockmap" "$yml" --title "${{ github.ref_name }}" --latest
