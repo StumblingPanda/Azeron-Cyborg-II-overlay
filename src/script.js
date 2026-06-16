@@ -354,6 +354,7 @@ const PIN_TO_KEY_ID = {
 const VK_TO_KEY = {
      8: "backspace",  9: "tab",    13: "enter",  27: "esc",   32: "space",
     16: "shift",     17: "ctrl",  18: "alt",
+   160: "shift",   161: "shift", 162: "ctrl", 163: "ctrl", 164: "alt", 165: "alt",
     37: "left",      38: "up",    39: "right",  40: "down",  45: "insert", 46: "delete",
     48: "0",  49: "1",  50: "2",  51: "3",  52: "4",  53: "5",  54: "6",  55: "7",  56: "8",  57: "9",
     65: "a",  66: "b",  67: "c",  68: "d",  69: "e",  70: "f",  71: "g",  72: "h",  73: "i",
@@ -391,9 +392,11 @@ function applyAzeronProfile(profile) {
         const keyObj = keys.find(k => k.id === keyId);
         if (!keyObj) continue;
 
-        const label  = (input.label || "").trim();
-        const isKbd  = input.types?.[0] === "1" && input.keyValues?.[0] !== "0";
-        if (!label && !isKbd) continue;
+        const label    = (input.label || "").trim();
+        const isKbd    = input.types?.[0] === "1" && input.keyValues?.[0] !== "0";
+        const isModOnly = input.types?.[0] === "1" && input.keyValues?.[0] === "0" &&
+                          !!VK_TO_KEY[parseInt(input.metaValues?.[0])];
+        if (!label && !isKbd && !isModOnly) continue;
 
         if (label) {
             keyObj.label = label;
@@ -412,6 +415,16 @@ function applyAzeronProfile(profile) {
                     const el = document.getElementById(keyId);
                     if (el) el.innerText = keybind;
                 }
+            }
+        } else if (isModOnly) {
+            const keybind = VK_TO_KEY[parseInt(input.metaValues[0])];
+            delete keyMap[keyObj.keybind];
+            keyObj.keybind = keybind;
+            keyMap[keybind] = keyId;
+            if (!label) {
+                keyObj.label = keybind;
+                const el = document.getElementById(keyId);
+                if (el) el.innerText = keybind;
             }
         }
         count++;
