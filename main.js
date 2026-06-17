@@ -41,6 +41,7 @@ function createWindow() {
         hasShadow: false,
         webPreferences: { nodeIntegration: true, contextIsolation: false }
     });
+    win.setAlwaysOnTop(true, 'screen-saver');
     win.loadFile('src/index.html');
 }
 

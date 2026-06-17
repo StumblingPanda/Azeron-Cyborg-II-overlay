@@ -12,6 +12,7 @@ const overlayContent    = document.getElementById("overlay-content");
 const optionsUi         = document.getElementById("options-ui");
 const stick             = document.getElementById("joystick-stick");
 const optionsButton     = document.getElementById("options-button");
+const closeButton       = document.getElementById("close-button");
 const optionsPanel      = document.getElementById("options-panel");
 const scaleSlider       = document.getElementById("scale-slider");
 const opacitySlider     = document.getElementById("opacity-slider");
@@ -115,6 +116,8 @@ function connectWebSocket() {
 /* -----------------------------
    OPTIONS PANEL
 ----------------------------- */
+
+closeButton.addEventListener("click", () => window.close());
 
 optionsButton.addEventListener("click", () => {
     const opening = optionsPanel.style.display !== "flex";
