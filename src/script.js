@@ -597,7 +597,7 @@ function commitKeybind() {
 
 function showKeyPopup(keyData) {
     currentEditingKey         = keyData;
-    keyPopupTitle.textContent = keyData.label || keyData.id;
+    keyPopupTitle.textContent = (keyData.label || keyData.id).replace(/\n/g, ' ');
     popupLabelInput.value     = keyData.label;
     popupKeybindInput.value   = keyData.keybind;
     popupKeybindInput.classList.remove("capturing");
@@ -625,7 +625,7 @@ keyPopupClose.addEventListener("click", (e) => {
 
 popupLabelInput.addEventListener("blur",    commitLabel);
 popupLabelInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter")  { e.preventDefault(); popupKeybindInput.focus(); }
+    if (e.key === "Tab")    { e.preventDefault(); popupKeybindInput.focus(); }
     if (e.key === "Escape") { e.preventDefault(); closeKeyPopup(); }
 });
 

@@ -252,7 +252,7 @@ body {
 #key-popup {
     position: absolute;
     display: none;
-    width: 200px;
+    min-width: 200px;
     background: rgba(15, 15, 15, 0.97);
     border: 1px solid #555;
     border-radius: 10px;
@@ -279,7 +279,7 @@ body {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    max-width: 140px;
+    max-width: none;
 }
 
 .popup-title-row button {
@@ -315,19 +315,27 @@ body {
     flex-shrink: 0;
 }
 
-.popup-row input {
+.popup-row input, .popup-row textarea {
     flex: 1;
+    min-width: 0;
+    field-sizing: content;
     background: rgba(255, 255, 255, 0.07);
     border: 1px solid #444;
     border-radius: 6px;
     color: white;
     padding: 5px 7px;
     font-size: 11px;
+    font-family: Arial, sans-serif;
     box-sizing: border-box;
     outline: none;
 }
 
-.popup-row input:focus {
+.popup-row textarea {
+    resize: none;
+    overflow: hidden;
+}
+
+.popup-row input:focus, .popup-row textarea:focus {
     border-color: #888;
     background: rgba(255, 255, 255, 0.12);
 }
