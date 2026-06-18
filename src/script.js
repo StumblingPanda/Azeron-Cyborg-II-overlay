@@ -370,15 +370,51 @@ const VK_TO_KEY = {
     219: "[", 220: "\\", 221: "]", 222: "'",
 };
 
-function buildKeybindString(vk, metaValues) {
-    const key = VK_TO_KEY[parseInt(vk)];
+// v2 software uses Web KeyboardEvent code strings instead of VK numbers
+const WEB_CODE_TO_KEY = {
+    Space: "space", Enter: "enter", Backspace: "backspace", Tab: "tab",
+    Escape: "esc", Delete: "delete", Insert: "insert",
+    ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right",
+    ShiftLeft: "shift", ShiftRight: "shift",
+    ControlLeft: "ctrl", ControlRight: "ctrl",
+    AltLeft: "alt", AltRight: "alt",
+    Equal: "=", Minus: "-", BracketLeft: "[", BracketRight: "]",
+    Semicolon: ";", Quote: "'", Backquote: "`", Backslash: "\\",
+    Comma: ",", Period: ".", Slash: "/",
+    F1: "f1", F2: "f2", F3: "f3", F4: "f4", F5: "f5", F6: "f6",
+    F7: "f7", F8: "f8", F9: "f9", F10: "f10", F11: "f11", F12: "f12",
+};
+
+function resolveKey(val) {
+    if (!val || val === "0") return null;
+    const letter = val.match(/^Key([A-Z])$/);
+    if (letter) return letter[1].toLowerCase();
+    const digit = val.match(/^Digit(\d)$/);
+    if (digit) return digit[1];
+    if (WEB_CODE_TO_KEY[val]) return WEB_CODE_TO_KEY[val];
+    const vk = parseInt(val);
+    return (!isNaN(vk) && vk) ? (VK_TO_KEY[vk] || null) : null;
+}
+
+function resolveModifier(val) {
+    if (!val || val === "0") return null;
+    if (val === "ShiftLeft"   || val === "ShiftRight")   return "shift";
+    if (val === "ControlLeft" || val === "ControlRight") return "ctrl";
+    if (val === "AltLeft"     || val === "AltRight")     return "alt";
+    const vk = parseInt(val);
+    if (vk === 16 || vk === 160 || vk === 161) return "shift";
+    if (vk === 17 || vk === 162 || vk === 163) return "ctrl";
+    if (vk === 18 || vk === 164 || vk === 165) return "alt";
+    return null;
+}
+
+function buildKeybindString(keyVal, metaValues) {
+    const key = resolveKey(keyVal);
     if (!key) return "";
     const mods = new Set();
     for (const mv of metaValues) {
-        const m = parseInt(mv);
-        if      (m === 16 || m === 160 || m === 161) mods.add("shift");
-        else if (m === 17 || m === 162 || m === 163) mods.add("ctrl");
-        else if (m === 18 || m === 164 || m === 165) mods.add("alt");
+        const mod = resolveModifier(mv);
+        if (mod) mods.add(mod);
     }
     const parts = [];
     if (mods.has("ctrl"))  parts.push("ctrl");
@@ -395,10 +431,10 @@ function applyAzeronProfile(profile) {
     );
     if (joystickInput) {
         const ak   = joystickInput.analogSettings.analogKeys.left;
-        const up   = VK_TO_KEY[parseInt(ak.up?.[0])];
-        const down = VK_TO_KEY[parseInt(ak.down?.[0])];
-        const left = VK_TO_KEY[parseInt(ak.left?.[0])];
-        const right= VK_TO_KEY[parseInt(ak.right?.[0])];
+        const up   = resolveKey(String(ak.up?.[0]));
+        const down = resolveKey(String(ak.down?.[0]));
+        const left = resolveKey(String(ak.left?.[0]));
+        const right= resolveKey(String(ak.right?.[0]));
         if (up || down || left || right) {
             joystickKeys  = { up: up || joystickKeys.up, down: down || joystickKeys.down, left: left || joystickKeys.left, right: right || joystickKeys.right };
             movementState = Object.fromEntries(Object.values(joystickKeys).map(k => [k, false]));
@@ -414,9 +450,9 @@ function applyAzeronProfile(profile) {
         if (!keyObj) continue;
 
         const label    = (input.label || "").trim();
-        const isKbd    = input.types?.[0] === "1" && input.keyValues?.[0] !== "0";
-        const isModOnly = input.types?.[0] === "1" && input.keyValues?.[0] === "0" &&
-                          !!VK_TO_KEY[parseInt(input.metaValues?.[0])];
+        const isKbd     = input.types?.[0] === "1" && !!resolveKey(input.keyValues?.[0]);
+        const isModOnly = input.types?.[0] === "1" && !resolveKey(input.keyValues?.[0]) &&
+                          !!resolveModifier(input.metaValues?.[0]);
         if (!label && !isKbd && !isModOnly) continue;
 
         if (label) {
@@ -438,7 +474,7 @@ function applyAzeronProfile(profile) {
                 }
             }
         } else if (isModOnly) {
-            const keybind = VK_TO_KEY[parseInt(input.metaValues[0])];
+            const keybind = resolveModifier(input.metaValues[0]);
             delete keyMap[keyObj.keybind];
             keyObj.keybind = keybind;
             keyMap[keybind] = keyId;
