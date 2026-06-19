@@ -18,6 +18,8 @@ as a quick visual reference for your binds.
 
 All devices support manual button labeling. Profile import for RH Keyzen and LH Cyro is not yet available — pin mappings for those devices are still being collected from community exports.
 
+Thanks to @COALEYED over on the Azeron community discord for supplying mappable exports to work from.
+
 ## Features
 
 - Live key-press highlights
