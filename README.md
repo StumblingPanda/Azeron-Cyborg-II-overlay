@@ -1,12 +1,22 @@
-# Azeron Cyborg II Overlay
+# Azeron Overlay
 
 A lightweight Windows overlay that mirrors your Azeron keypad in real time.
 Live key-press highlights, editable button labels, and on-the-fly profile
 switching — no Azeron software needed at runtime. Perfect for streamers or
 as a quick visual reference for your binds.
 
-Currently only tested that importing works from Azeron software 1.5.6 so be aware of Bugs if 2.0 dont work,
-plans to fully implement 2.0 if its not working, and adding the other pieces of hardware (Cyborg II lefty, Cyro and the Keyzen).
+## Device Support
+
+| Device | Overlay | Profile Import |
+|---|---|---|
+| LH Cyborg II | ✅ | ✅ |
+| RH Cyborg II | ✅ | ✅ |
+| LH Keyzen | ✅ | ✅ |
+| RH Cyro | ✅ | ✅ |
+| RH Keyzen | ✅ | ⏳ coming soon |
+| LH Cyro | ✅ | ⏳ coming soon |
+
+All devices support manual button labeling. Profile import for RH Keyzen and LH Cyro is not yet available — pin mappings for those devices are still being collected from community exports.
 
 ## Features
 
@@ -63,6 +73,10 @@ Then bring it into the overlay:
 5. Click **Import Azeron Profile…** in the overlay settings panel
 6. Select the file you just exported
 7. Pick your profile from the dropdown and hit **Apply** — key labels update instantly
+
+## Known Limitations
+
+**Duplicate keybinds:** The overlay tracks button activity by key name, not by which physical button was pressed. If two buttons on your keypad are assigned to the same key, pressing either one will highlight whichever overlay button has that keybind. This is by design — it allows the overlay to work across all Azeron hardware models without needing device-specific hardware identifiers. Avoid assigning the same key to more than one button if accurate per-button highlighting matters to you.
 
 ## Support & Community
 

@@ -1,16 +1,24 @@
 const { ipcRenderer } = require('electron');
-const DEFAULT_KEYS = require('./keys.cjs');
+
+// Device layout files
+const KEYS_CYBORG2       = require('./layouts/keys.cjs');
+const KEYS_CYBORG2_LEFTY = require('./layouts/keys_lefty.cjs');
+const KEYS_KEYZEN        = require('./layouts/keys_keyzen.cjs');
+const KEYS_KEYZEN_RH     = require('./layouts/keys_keyzen_rh.cjs');
+const KEYS_CYRO          = require('./layouts/keys_cyro.cjs');
+const KEYS_CYRO_LH       = require('./layouts/keys_cyro_lh.cjs');
 
 const JOYSTICK_DISTANCE = 35;
 const POPUP_WIDTH       = 200;
-const KEY_W             = 65;   // used for popup positioning
-const CONTENT_W         = 665;  // used for popup flip detection
+const KEY_W             = 65;
+let   CONTENT_W         = 665;
 
 // DOM refs
 const overlay           = document.getElementById("overlay-visuals");
 const overlayContent    = document.getElementById("overlay-content");
 const optionsUi         = document.getElementById("options-ui");
 const stick             = document.getElementById("joystick-stick");
+const joystickContainer = document.getElementById("joystick-container");
 const optionsButton     = document.getElementById("options-button");
 const closeButton       = document.getElementById("close-button");
 const optionsPanel      = document.getElementById("options-panel");
@@ -33,15 +41,131 @@ const profileSelectRow    = document.getElementById("profile-select-row");
 const profileSelect       = document.getElementById("profile-select");
 const profileApplyBtn     = document.getElementById("profile-apply-btn");
 const importStatus        = document.getElementById("import-status");
+const deviceSelect        = document.getElementById("device-select");
 const keyPopup            = document.getElementById("key-popup");
-const keyPopupTitle     = document.getElementById("key-popup-title");
-const keyPopupClose     = document.getElementById("key-popup-close");
-const popupLabelInput   = document.getElementById("popup-label-input");
-const popupKeybindInput = document.getElementById("popup-keybind-input");
+const keyPopupTitle       = document.getElementById("key-popup-title");
+const keyPopupClose       = document.getElementById("key-popup-close");
+const popupLabelInput     = document.getElementById("popup-label-input");
+const popupKeybindInput   = document.getElementById("popup-keybind-input");
+
+// Device configurations
+const PIN_TO_KEY_ID_CYBORG2 = {
+     1: "mage-food-mana-drink",   2: "hammer-of-wrath",     3: "holy-shock",
+     4: "crusaders-strike",       5: "map-dungeon-finder",  6: "light-of-dawn",
+     7: "combat-ress",            8: "blessing-of-seasons", 9: "flash-of-light",
+    10: "judgement",             11: "row1-btn2",           13: "lay-on-hands",
+    14: "kick",                  15: "holy-light",          16: "consecrate",
+    17: "row1-btn3",             19: "mount-journal",       20: "appearances-log",
+    22: "jump",                  23: "racial-ability",      24: "word-of-glory",
+    25: "focus-target-macro",    26: "row1-btn4",           27: "extra-actionbutton",
+    32: "movement-ability",      33: "utility-ring",        34: "bags-character",
+    35: "spellbook-talents",     36: "dungeon-portals",     37: "social-esc",
+};
+
+// All 22 keyboard buttons mapped. cy-r4c3 is the scroll encoder (no keyboard event).
+const PIN_TO_KEY_ID_CYRO = {
+    // Row 2 right (JOY #4, #3, #2, #1)
+    12: "cy-r2c3",
+    13: "cy-r2c4",
+     8: "cy-r2c5",
+     9: "cy-r2c6",
+    // Row 3 right (JOY #8, #7, #6, #5)
+    14: "cy-r3c3",
+    15: "cy-r3c4",
+    11: "cy-r3c5",
+    10: "cy-r3c6",
+    // Row 4 right (JOY #12, #11, #10, #9) — cy-r4c3 is scroll encoder, starts at cy-r4c4
+     3: "cy-r4c4",
+     2: "cy-r4c5",
+     1: "cy-r4c6",
+     0: "cy-r4c7",
+    // Row 5 right (JOY #17, #16, #15, #14)
+     7: "cy-r5c4",
+     6: "cy-r5c5",
+     5: "cy-r5c6",
+     4: "cy-r5c7",
+    // 5-way cluster (Up/Left/Esc/Right/Down)
+    19: "cy-r0c1",
+    18: "cy-r1c0",
+    20: "cy-r1c1",
+    17: "cy-r1c2",
+    16: "cy-r2c1",
+    // Bottom left (JOY #24)
+    22: "cy-r5c1",
+};
+
+// 30 of 32 buttons confirmed from user export cross-referenced with MMORPG screenshot.
+// Pins 28 and 29 exist (type:11 unassigned) but their kz-IDs (kz-r3c5, kz-r4c5) are unknown.
+const PIN_TO_KEY_ID_KEYZEN = {
+     1: "kz-r5c1",    2: "kz-r4c1",    3: "kz-r3c1",    4: "kz-r2c1",
+     5: "kz-r3c0",    6: "kz-r4c0",    7: "kz-r5c2",    8: "kz-r4c2",
+     9: "kz-r3c2",   10: "kz-r2c2",   11: "kz-r1c2",   13: "kz-r5c3",
+    14: "kz-r4c3",   15: "kz-r3c3",   16: "kz-r2c3",   17: "kz-r1c3",
+    19: "kz-r5c8",   20: "kz-r3c8",   22: "kz-r5c4",   23: "kz-r4c4",
+    24: "kz-r3c4",   25: "kz-r2c4",   26: "kz-r1c4",   27: "kz-r2c5",
+    28: "kz-r3c5",   29: "kz-r4c5",
+    32: "kz-r5c7",   33: "kz-r1c8",   34: "kz-r0c7",   35: "kz-r1c6",
+    36: "kz-r2c7",   37: "kz-r1c7",
+};
+
+const PIN_TO_KEY_ID_CYRO_LH   = {};
+const PIN_TO_KEY_ID_KEYZEN_RH  = {};
+
+const DEVICE_CONFIGS = {
+    'cyborg2': {
+        name: 'LH Cyborg II',
+        baseKeys: KEYS_CYBORG2,
+        pinToKeyId: PIN_TO_KEY_ID_CYBORG2,
+        joystick: { left: 434, top: 286 },
+        contentWidth: 665,
+        autoDetectDevice: 8,
+    },
+    'cyborg2-lefty': {
+        name: 'RH Cyborg II',
+        baseKeys: KEYS_CYBORG2_LEFTY,
+        pinToKeyId: PIN_TO_KEY_ID_CYBORG2,
+        joystick: { left: 111, top: 286 },
+        contentWidth: 665,
+        autoDetectDevice: null,
+    },
+    'keyzen': {
+        name: 'LH Keyzen',
+        baseKeys: KEYS_KEYZEN,
+        pinToKeyId: PIN_TO_KEY_ID_KEYZEN,
+        joystick: { left: 430, top: 261 },
+        contentWidth: 631,
+        autoDetectDevice: [8, 9],
+    },
+    'cyro': {
+        name: 'RH Cyro',
+        baseKeys: KEYS_CYRO,
+        pinToKeyId: PIN_TO_KEY_ID_CYRO,
+        joystick: { left: 84, top: 291 },
+        contentWidth: 581,
+        autoDetectDevice: 4,
+    },
+    'cyro-lh': {
+        name: 'LH Cyro',
+        baseKeys: KEYS_CYRO_LH,
+        pinToKeyId: PIN_TO_KEY_ID_CYRO_LH,
+        joystick: { left: 377, top: 291 },
+        contentWidth: 497,
+        autoDetectDevice: null,
+    },
+    'keyzen-rh': {
+        name: 'RH Keyzen',
+        baseKeys: KEYS_KEYZEN_RH,
+        pinToKeyId: PIN_TO_KEY_ID_KEYZEN_RH,
+        joystick: { left: 161, top: 271 },
+        contentWidth: 697,
+        autoDetectDevice: null,
+    },
+};
 
 // Runtime state
-let joystickKeys  = JSON.parse(localStorage.getItem("joystickKeys") || "null") || { up: "w", down: "s", left: "a", right: "d" };
-let movementState = Object.fromEntries(Object.values(joystickKeys).map(k => [k, false]));
+let activeDeviceId    = localStorage.getItem("activeDevice") || "cyborg2";
+let joystickKeys      = JSON.parse(localStorage.getItem("joystickKeys") || "null") || { up: "w", down: "s", left: "a", right: "d" };
+let movementState     = Object.fromEntries(Object.values(joystickKeys).map(k => [k, false]));
 let isClickthrough    = false;
 let isUnlocked        = false;
 let isDragging        = false;
@@ -57,9 +181,8 @@ let overlayOpacity = parseFloat(localStorage.getItem("overlayOpacity")) || 1;
 let accentColor    = localStorage.getItem("accentColor") || "#ffffff";
 let keyBgColor     = localStorage.getItem("keyBgColor")  || "#0f0f0f";
 
-// Key data — merge defaults with any user-saved overrides
-const savedKeybinds = JSON.parse(localStorage.getItem("keybinds") || "{}");
-const keys = DEFAULT_KEYS.map(k => ({ ...k, ...(savedKeybinds[k.id] || {}) }));
+// Active layout state — populated by switchDevice()
+let keys   = [];
 const keyMap = {};
 
 
@@ -293,7 +416,6 @@ async function switchToDisplay(displayId) {
     currentDisplayId     = displayId;
     currentDisplayBounds = { x: 0, y: 0, width: bounds.width, height: bounds.height };
     localStorage.setItem("displayId", String(displayId));
-    // Reset position so the overlay is visible on the new display
     overlay.style.left = "100px";
     overlay.style.top  = "100px";
     localStorage.setItem("overlayX", "100px");
@@ -342,28 +464,19 @@ retryUpdateBtn.addEventListener("click", () => ipcRenderer.send("retry-update"))
    PROFILE IMPORT
 ----------------------------- */
 
-const PIN_TO_KEY_ID = {
-     1: "mage-food-mana-drink",   2: "hammer-of-wrath",     3: "holy-shock",
-     4: "crusaders-strike",       5: "map-dungeon-finder",  6: "light-of-dawn",
-     7: "combat-ress",            8: "blessing-of-seasons", 9: "flash-of-light",
-    10: "judgement",             11: "row1-btn2",           13: "lay-on-hands",
-    14: "kick",                  15: "holy-light",          16: "consecrate",
-    17: "row1-btn3",             19: "mount-journal",       20: "appearances-log",
-    22: "jump",                  23: "racial-ability",      24: "word-of-glory",
-    25: "focus-target-macro",    26: "row1-btn4",           27: "extra-actionbutton",
-    32: "movement-ability",      33: "utility-ring",        34: "bags-character",
-    35: "spellbook-talents",     36: "dungeon-portals",     37: "social-esc",
-};
-
 const VK_TO_KEY = {
      8: "backspace",  9: "tab",    13: "enter",  27: "esc",   32: "space",
     16: "shift",     17: "ctrl",  18: "alt",
    160: "shift",   161: "shift", 162: "ctrl", 163: "ctrl", 164: "alt", 165: "alt",
+    33: "pgup",  34: "pgdn",  35: "end",  36: "home",
     37: "left",      38: "up",    39: "right",  40: "down",  45: "insert", 46: "delete",
     48: "0",  49: "1",  50: "2",  51: "3",  52: "4",  53: "5",  54: "6",  55: "7",  56: "8",  57: "9",
     65: "a",  66: "b",  67: "c",  68: "d",  69: "e",  70: "f",  71: "g",  72: "h",  73: "i",
     74: "j",  75: "k",  76: "l",  77: "m",  78: "n",  79: "o",  80: "p",  81: "q",  82: "r",
     83: "s",  84: "t",  85: "u",  86: "v",  87: "w",  88: "x",  89: "y",  90: "z",
+    96: "num0",  97: "num1",  98: "num2",  99: "num3", 100: "num4",
+   101: "num5", 102: "num6", 103: "num7", 104: "num8", 105: "num9",
+   106: "num*", 107: "num+", 109: "num-", 110: "num.", 111: "num/",
     112: "f1",  113: "f2",  114: "f3",  115: "f4",  116: "f5",  117: "f6",
     118: "f7",  119: "f8",  120: "f9",  121: "f10", 122: "f11", 123: "f12",
     186: ";", 187: "=", 188: ",", 189: "-", 190: ".", 191: "/", 192: "`",
@@ -383,6 +496,11 @@ const WEB_CODE_TO_KEY = {
     Comma: ",", Period: ".", Slash: "/",
     F1: "f1", F2: "f2", F3: "f3", F4: "f4", F5: "f5", F6: "f6",
     F7: "f7", F8: "f8", F9: "f9", F10: "f10", F11: "f11", F12: "f12",
+    PageUp: "pgup", PageDown: "pgdn", End: "end", Home: "home",
+    Numpad0: "num0", Numpad1: "num1", Numpad2: "num2", Numpad3: "num3", Numpad4: "num4",
+    Numpad5: "num5", Numpad6: "num6", Numpad7: "num7", Numpad8: "num8", Numpad9: "num9",
+    NumpadMultiply: "num*", NumpadAdd: "num+", NumpadSubtract: "num-",
+    NumpadDecimal: "num.", NumpadDivide: "num/", NumpadEnter: "enter",
 };
 
 function resolveKey(val) {
@@ -425,6 +543,21 @@ function buildKeybindString(keyVal, metaValues) {
 }
 
 function applyAzeronProfile(profile) {
+    // Auto-detect device from v2 export metaData.
+    // If the active device already claims this device number, keep it — multiple devices
+    // (e.g., Keyzen and Cyborg II) can share the same exported device number.
+    const deviceNum = profile.metaData?.device;
+    if (deviceNum !== undefined) {
+        const deviceMatches = (ad) => Array.isArray(ad) ? ad.includes(deviceNum) : ad === deviceNum;
+        const currentCfg = DEVICE_CONFIGS[activeDeviceId];
+        if (!deviceMatches(currentCfg?.autoDetectDevice)) {
+            const match = Object.entries(DEVICE_CONFIGS).find(([, cfg]) => deviceMatches(cfg.autoDetectDevice));
+            if (match) switchDevice(match[0]);
+        }
+    }
+
+    const pinToKeyId = DEVICE_CONFIGS[activeDeviceId].pinToKeyId;
+
     const joystickInput = profile.inputs.find(
         inp => (inp.types?.[0] === "4" || inp.types?.[0] === "21") &&
                inp.analogSettings?.analogKeys?.left
@@ -443,9 +576,11 @@ function applyAzeronProfile(profile) {
     }
 
     let count = 0;
+    const seenPins = new Set();
     for (const input of profile.inputs) {
-        const keyId  = PIN_TO_KEY_ID[input.pinOne];
+        const keyId  = pinToKeyId[input.pinOne];
         if (!keyId) continue;
+        if (seenPins.has(input.pinOne)) continue;
         const keyObj = keys.find(k => k.id === keyId);
         if (!keyObj) continue;
 
@@ -453,9 +588,12 @@ function applyAzeronProfile(profile) {
         const isKbd     = input.types?.[0] === "1" && !!resolveKey(input.keyValues?.[0]);
         const isModOnly = input.types?.[0] === "1" && !resolveKey(input.keyValues?.[0]) &&
                           !!resolveModifier(input.metaValues?.[0]);
-        if (!label && !isKbd && !isModOnly) continue;
+        const isJoyBtn  = input.types?.[0] === "5" &&
+                          input.keyValues?.[0] && input.keyValues?.[0] !== "0";
+        if (!label && !isKbd && !isModOnly && !isJoyBtn) continue;
 
         if (label) {
+            seenPins.add(input.pinOne);
             keyObj.label = label;
             const el = document.getElementById(keyId);
             if (el) el.innerText = label;
@@ -467,6 +605,11 @@ function applyAzeronProfile(profile) {
                 delete keyMap[keyObj.keybind];
                 keyObj.keybind = keybind;
                 keyMap[keybind] = keyId;
+                // Only lock this pin if keybind is not a bare symbol (=, -, [, etc.)
+                // so a later non-symbol assignment can still override it
+                if (!(keybind.length === 1 && /[^a-z0-9]/i.test(keybind))) {
+                    seenPins.add(input.pinOne);
+                }
                 if (!label) {
                     keyObj.label = keybind;
                     const el = document.getElementById(keyId);
@@ -478,10 +621,18 @@ function applyAzeronProfile(profile) {
             delete keyMap[keyObj.keybind];
             keyObj.keybind = keybind;
             keyMap[keybind] = keyId;
+            seenPins.add(input.pinOne);
             if (!label) {
                 keyObj.label = keybind;
                 const el = document.getElementById(keyId);
                 if (el) el.innerText = keybind;
+            }
+        } else if (isJoyBtn) {
+            seenPins.add(input.pinOne);
+            if (!label) {
+                keyObj.label = String(input.keyValues[0]);
+                const el = document.getElementById(keyId);
+                if (el) el.innerText = String(input.keyValues[0]);
             }
         }
         count++;
@@ -561,24 +712,72 @@ ipcRenderer.on("global-key", (_event, key) => {
 
 
 /* -----------------------------
-   KEY BUTTONS
+   DEVICE SWITCHING
 ----------------------------- */
 
-keys.forEach(keyData => {
-    const el = document.createElement("div");
-    el.classList.add("key");
-    el.id        = keyData.id;
-    el.innerText = keyData.label;
-    el.style.top  = keyData.top  + "px";
-    el.style.left = keyData.left + "px";
-    overlayContent.appendChild(el);
-    keyMap[keyData.keybind] = keyData.id;
+function saveKeybinds() {
+    const data = {};
+    keys.forEach(k => { data[k.id] = { label: k.label, keybind: k.keybind }; });
+    localStorage.setItem("keybinds_" + activeDeviceId, JSON.stringify(data));
+}
 
-    el.addEventListener("click", (e) => {
-        if (optionsPanel.style.display !== "flex" || isClickthrough) return;
-        e.stopPropagation();
-        showKeyPopup(keyData);
+function switchDevice(deviceId) {
+    if (!DEVICE_CONFIGS[deviceId]) return;
+
+    closeKeyPopup();
+
+    activeDeviceId = deviceId;
+    localStorage.setItem("activeDevice", deviceId);
+
+    const config = DEVICE_CONFIGS[deviceId];
+
+    // Migrate legacy Cyborg II keybinds on first switch
+    if (deviceId === "cyborg2" && !localStorage.getItem("keybinds_cyborg2") && localStorage.getItem("keybinds")) {
+        localStorage.setItem("keybinds_cyborg2", localStorage.getItem("keybinds"));
+    }
+
+    const saved = JSON.parse(localStorage.getItem("keybinds_" + deviceId) || "{}");
+    keys = config.baseKeys.map(k => ({ ...k, ...(saved[k.id] || {}) }));
+
+    // Rebuild key DOM elements
+    overlayContent.querySelectorAll(".key").forEach(el => el.remove());
+    Object.keys(keyMap).forEach(k => delete keyMap[k]);
+
+    keys.forEach(keyData => {
+        const el = document.createElement("div");
+        el.classList.add("key");
+        el.id        = keyData.id;
+        el.style.top  = keyData.top  + "px";
+        el.style.left = keyData.left + "px";
+        overlayContent.appendChild(el);
+
+        if (keyData.type === "scroll") {
+            el.classList.add("scroll-indicator");
+            el.innerHTML = '<span class="scroll-arrow">↑</span><span class="scroll-divider"></span><span class="scroll-arrow">↓</span>';
+        } else {
+            el.innerText = keyData.label;
+            if (keyData.keybind) keyMap[keyData.keybind] = keyData.id;
+            el.addEventListener("click", (e) => {
+                if (optionsPanel.style.display !== "flex" || isClickthrough) return;
+                e.stopPropagation();
+                showKeyPopup(keyData);
+            });
+        }
     });
+
+    // Reposition joystick
+    joystickContainer.style.left = config.joystick.left + "px";
+    joystickContainer.style.top  = config.joystick.top  + "px";
+
+    // Update popup flip boundary
+    CONTENT_W = config.contentWidth;
+
+    // Sync dropdown
+    if (deviceSelect) deviceSelect.value = deviceId;
+}
+
+deviceSelect.addEventListener("change", () => {
+    switchDevice(deviceSelect.value);
 });
 
 
@@ -600,12 +799,6 @@ function physicalKey(code) {
     if (code.startsWith('Digit')) return code.slice(5);
     if (code.startsWith('Key'))   return code.slice(3).toLowerCase();
     return null;
-}
-
-function saveKeybinds() {
-    const data = {};
-    keys.forEach(k => { data[k.id] = { label: k.label, keybind: k.keybind }; });
-    localStorage.setItem("keybinds", JSON.stringify(data));
 }
 
 function closeKeyPopup() {
@@ -679,7 +872,6 @@ popupKeybindInput.addEventListener("keydown", (e) => {
     if (e.shiftKey) parts.push("shift");
     if (e.altKey)   parts.push("alt");
     if (["control", "shift", "alt"].includes(key)) {
-        // Show pending modifier state and wait for the actual key
         popupKeybindInput.value = parts.join("+") + "+";
         return;
     }
@@ -692,7 +884,6 @@ popupKeybindInput.addEventListener("keyup", (e) => {
     if (!popupKeybindInput.value.endsWith("+")) return;
     const key = normalizeKey(e.key);
     if (!["control", "shift", "alt"].includes(key)) return;
-    // Update or clear the pending display as modifiers are released
     const parts = [];
     if (e.ctrlKey)  parts.push("ctrl");
     if (e.shiftKey) parts.push("shift");
@@ -719,7 +910,6 @@ document.addEventListener("click", (e) => {
 (async () => {
     displays = await ipcRenderer.invoke("get-displays");
 
-    // Restore the previously used display, fall back to primary
     const savedId      = parseInt(localStorage.getItem("displayId") || "0");
     const targetDisplay = displays.find(d => d.id === savedId)
                        || displays.find(d => d.isPrimary)
@@ -736,7 +926,6 @@ document.addEventListener("click", (e) => {
     let startX = parseInt(localStorage.getItem("overlayX")) || 100;
     let startY = parseInt(localStorage.getItem("overlayY")) || 100;
 
-    // If the options button (at left+44, top+44) would be off-screen, reset
     const optX = startX + 44;
     const optY = startY + 44;
     if (optX < 0 || optY < 0 || optX > currentDisplayBounds.width || optY > currentDisplayBounds.height) {
@@ -748,6 +937,9 @@ document.addEventListener("click", (e) => {
 
     overlay.style.left = startX + "px";
     overlay.style.top  = startY + "px";
+
+    // Load active device (creates key DOM elements and positions joystick)
+    switchDevice(activeDeviceId);
 
     connectWebSocket();
     applyAccentColor(accentColor);

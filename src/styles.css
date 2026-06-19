@@ -90,6 +90,25 @@ body {
     outline: 1px dashed rgba(255, 255, 255, 0.2);
 }
 
+.key.scroll-indicator {
+    flex-direction: column;
+    justify-content: space-around;
+    padding: 10px 4px;
+    opacity: 0.55;
+    cursor: default;
+}
+
+.scroll-indicator .scroll-arrow {
+    font-size: 16px;
+    line-height: 1;
+}
+
+.scroll-indicator .scroll-divider {
+    width: 55%;
+    height: 1px;
+    background: currentColor;
+}
+
 .key.active {
     background: var(--accent);
     color: var(--accent-fg);
