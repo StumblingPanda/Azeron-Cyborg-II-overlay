@@ -13,8 +13,8 @@ as a quick visual reference for your binds.
 | RH Cyborg II | ✅ | ✅ |
 | LH Keyzen | ✅ | ✅ |
 | RH Cyro | ✅ | ✅ |
-| RH Keyzen | ✅ | ⏳ coming soon |
-| LH Cyro | ✅ | ⏳ coming soon |
+| RH Keyzen | ✅ | ⏳ coming "soon" |
+| LH Cyro | ✅ | ⏳ coming "soon" |
 
 All devices support manual button labeling. Profile import for RH Keyzen and LH Cyro is not yet available — pin mappings for those devices are still being collected from community exports.
 
