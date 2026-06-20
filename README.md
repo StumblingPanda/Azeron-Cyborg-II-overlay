@@ -11,7 +11,7 @@ as a quick visual reference for your binds.
 |---|---|---|
 | LH Cyborg II | ✅ | ✅ |
 | RH Cyborg II | ✅ | ❓ |
-| LH Keyzen | ✅ | ❓ |
+| LH Keyzen | ✅ | ✅ |
 | RH Cyro | ✅ | ✅ |
 | RH Keyzen | ✅ | ⏳ coming "soon" |
 | LH Cyro | ✅ | ⏳ coming "soon" |
