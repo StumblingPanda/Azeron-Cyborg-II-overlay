@@ -10,8 +10,8 @@ as a quick visual reference for your binds.
 | Device | Overlay | Profile Import |
 |---|---|---|
 | LH Cyborg II | ✅ | ✅ |
-| RH Cyborg II | ✅ | ✅ |
-| LH Keyzen | ✅ | ✅ |
+| RH Cyborg II | ✅ | ❓ |
+| LH Keyzen | ✅ | ❓ |
 | RH Cyro | ✅ | ✅ |
 | RH Keyzen | ✅ | ⏳ coming "soon" |
 | LH Cyro | ✅ | ⏳ coming "soon" |
