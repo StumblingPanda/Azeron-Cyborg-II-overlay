@@ -249,6 +249,16 @@ body {
     color: white;
 }
 
+.options-btn-row {
+    display: flex;
+    gap: 6px;
+}
+
+.options-btn-row .options-btn {
+    flex: 1;
+    text-align: center;
+}
+
 .options-btn {
     width: 100%;
     padding: 7px 10px;
@@ -373,4 +383,111 @@ body {
 #popup-keybind-input.capturing {
     border-color: #f0a500;
     color: #f0a500;
+}
+
+/* ---- CALIBRATION WIZARD ---- */
+
+#calibration-wizard {
+    display: none;
+    position: absolute;
+    inset: 0;
+    z-index: 199999;
+}
+
+#calibration-wizard.active {
+    display: block;
+}
+
+#calibration-panel {
+    position: absolute;
+    top: 0;
+    left: 44px;
+    width: 260px;
+    background: rgba(15, 15, 15, 0.97);
+    border: 1px solid #555;
+    border-radius: 14px;
+    padding: 16px;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 200000;
+    box-sizing: border-box;
+}
+
+#calibration-title {
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #888;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #333;
+}
+
+#calibration-prompt {
+    font-size: 13px;
+    color: #fff;
+    line-height: 1.4;
+}
+
+#calibration-progress {
+    font-size: 11px;
+    color: #888;
+}
+
+#calibration-section-label {
+    font-size: 10px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    opacity: 0.7;
+    min-height: 14px;
+}
+
+#calibration-actions, #calibration-break-actions {
+    display: flex;
+    gap: 8px;
+}
+
+#calibration-actions .options-btn,
+#calibration-break-actions .options-btn {
+    flex: 1;
+    text-align: center;
+}
+
+#calibration-break-view {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
+}
+
+#calibration-break-check {
+    font-size: 24px;
+    color: #4caf50;
+    line-height: 1;
+}
+
+#calibration-break-msg {
+    font-size: 13px;
+    color: #fff;
+    line-height: 1.4;
+}
+
+#calibration-break-next {
+    font-size: 11px;
+    color: #888;
+}
+
+.key.calibrating {
+    background: var(--accent) !important;
+    color: var(--accent-fg) !important;
+    animation: calibration-pulse 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes calibration-pulse {
+    from { opacity: 1; }
+    to   { opacity: 0.4; }
 }

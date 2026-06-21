@@ -4,6 +4,24 @@ All notable changes to Azeron Overlay are documented here.
 
 ---
 
+## [1.4.0] - 2026-06-21
+
+### Added
+- Button calibration wizard — maps physical Azeron buttons to overlay elements without needing a profile export, works for any hardware revision
+- Calibration is split into sections per device (Main Body → 5-Way Cluster → Side Buttons → Joystick Click) with a transition screen between each group
+- Multi-key bind support in calibration — buttons bound to combos like I+O register both keys in a 100ms collection window so neither is missed
+- 8-second auto-skip countdown for buttons with no Azeron keybind — unbound buttons skip themselves automatically
+- Standalone modifier key detection — buttons bound to just Ctrl, Shift, or Alt alone are now detected and calibrated correctly
+- Anonymous calibration data opt-in added to the install wizard — checked by default (opt-out), preference saved to `%APPDATA%\AzeronOverlay\prefs.json` and toggleable in-app
+- Overlay now launches in clickthrough mode by default — must be manually disabled to interact
+
+### Fixed
+- Hardware revision detection on profile import — buttons no longer land in wrong positions when importing a profile from a different Cyborg II firmware revision (detected via pin range > 37)
+- Calibration panel positions itself below the bottom row of buttons instead of overlapping them
+- Options panel section buttons condensed to two per row; Privacy merged into Device section to reduce panel height
+
+---
+
 ## [1.3.3] - 2026-06-21
 
 ### Fixed

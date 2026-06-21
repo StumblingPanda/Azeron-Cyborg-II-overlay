@@ -28,7 +28,8 @@ const colorPicker       = document.getElementById("color-picker");
 const keyBgPicker       = document.getElementById("key-bg-picker");
 const unlockBtn         = document.getElementById("unlock-btn");
 const clickthroughBtn   = document.getElementById("clickthrough-btn");
-const resetPositionBtn    = document.getElementById("reset-position-btn");
+const resetPositionBtn  = document.getElementById("reset-position-btn");
+const shareDataCheck    = document.getElementById("share-data-check");
 const monitorBtn          = document.getElementById("monitor-btn");
 const updateSection       = document.getElementById("update-section");
 const updateStatusText    = document.getElementById("update-status-text");
@@ -47,6 +48,20 @@ const keyPopupTitle       = document.getElementById("key-popup-title");
 const keyPopupClose       = document.getElementById("key-popup-close");
 const popupLabelInput     = document.getElementById("popup-label-input");
 const popupKeybindInput   = document.getElementById("popup-keybind-input");
+const calibrateBtn           = document.getElementById("calibrate-btn");
+const calibrationWizard      = document.getElementById("calibration-wizard");
+const calibrationStepsView   = document.getElementById("calibration-steps-view");
+const calibrationSectionLabel= document.getElementById("calibration-section-label");
+const calibrationPrompt      = document.getElementById("calibration-prompt");
+const calibrationProgress    = document.getElementById("calibration-progress");
+const calibrationSkipBtn     = document.getElementById("calibration-skip-btn");
+const calibrationCancelBtn   = document.getElementById("calibration-cancel-btn");
+const calibrationBreakView   = document.getElementById("calibration-break-view");
+const calibrationBreakMsg    = document.getElementById("calibration-break-msg");
+const calibrationBreakNext   = document.getElementById("calibration-break-next");
+const calibrationContinueBtn = document.getElementById("calibration-continue-btn");
+const calibrationCancelBreakBtn = document.getElementById("calibration-cancel-break-btn");
+const calibrationStatus      = document.getElementById("calibration-status");
 
 // Device configurations
 const PIN_TO_KEY_ID_CYBORG2 = {
@@ -139,6 +154,129 @@ const PIN_TO_KEY_ID_KEYZEN = {
 const PIN_TO_KEY_ID_CYRO_LH   = {};
 const PIN_TO_KEY_ID_KEYZEN_RH  = {};
 
+const CYBORG2_SECTIONS = [
+    {
+        label: "Main Body",
+        transition: "Move your thumb over to the 5-way cluster",
+        ids: ["map-dungeon-finder","row1-btn2","row1-btn3","row1-btn4",
+              "crusaders-strike","judgement","consecrate","focus-target-macro",
+              "light-of-dawn","holy-shock","flash-of-light","holy-light","word-of-glory","extra-actionbutton",
+              "hammer-of-wrath","blessing-of-seasons","kick","racial-ability",
+              "mage-food-mana-drink","combat-ress","lay-on-hands","jump"],
+    },
+    {
+        label: "5-Way Cluster",
+        transition: "Now press the two side buttons next to the joystick",
+        ids: ["bags-character","spellbook-talents","social-esc","utility-ring","dungeon-portals"],
+    },
+    {
+        label: "Side Buttons",
+        transition: "Finally, press the joystick click",
+        ids: ["appearances-log","mount-journal"],
+    },
+    {
+        label: "Joystick Click",
+        transition: null,
+        ids: ["movement-ability"],
+    },
+];
+
+const KEYZEN_SECTIONS = [
+    {
+        label: "Main Body",
+        transition: "Move your thumb over to the 5-way cluster",
+        ids: ["kz-r1c2","kz-r1c3","kz-r1c4",
+              "kz-r2c1","kz-r2c2","kz-r2c3","kz-r2c4","kz-r2c5",
+              "kz-r3c0","kz-r3c1","kz-r3c2","kz-r3c3","kz-r3c4","kz-r3c5",
+              "kz-r4c0","kz-r4c1","kz-r4c2","kz-r4c3","kz-r4c4","kz-r4c5",
+              "kz-r5c1","kz-r5c2","kz-r5c3","kz-r5c4"],
+    },
+    {
+        label: "5-Way Cluster",
+        transition: "Now press the two buttons at the bottom next to the joystick",
+        ids: ["kz-r0c7","kz-r1c6","kz-r1c7","kz-r1c8","kz-r2c7"],
+    },
+    {
+        label: "Side Buttons",
+        transition: "Finally, press the joystick click",
+        ids: ["kz-r5c7","kz-r5c8"],
+    },
+    {
+        label: "Joystick Click",
+        transition: null,
+        ids: ["kz-r3c8"],
+    },
+];
+
+const KEYZEN_RH_SECTIONS = [
+    {
+        label: "Main Body",
+        transition: "Move your thumb over to the 5-way cluster",
+        ids: ["kz-rh-r1c2","kz-rh-r1c3","kz-rh-r1c4",
+              "kz-rh-r2c1","kz-rh-r2c2","kz-rh-r2c3","kz-rh-r2c4","kz-rh-r2c5",
+              "kz-rh-r3c0","kz-rh-r3c1","kz-rh-r3c2","kz-rh-r3c3","kz-rh-r3c4","kz-rh-r3c5",
+              "kz-rh-r4c0","kz-rh-r4c1","kz-rh-r4c2","kz-rh-r4c3","kz-rh-r4c4","kz-rh-r4c5",
+              "kz-rh-r5c1","kz-rh-r5c2","kz-rh-r5c3","kz-rh-r5c4"],
+    },
+    {
+        label: "5-Way Cluster",
+        transition: "Now press the two buttons at the bottom next to the joystick",
+        ids: ["kz-rh-r0c7","kz-rh-r1c6","kz-rh-r1c7","kz-rh-r1c8","kz-rh-r2c7"],
+    },
+    {
+        label: "Side Buttons",
+        transition: "Finally, press the joystick click",
+        ids: ["kz-rh-r5c7","kz-rh-r5c8"],
+    },
+    {
+        label: "Joystick Click",
+        transition: null,
+        ids: ["kz-rh-r3c8"],
+    },
+];
+
+const CYRO_SECTIONS = [
+    {
+        label: "Main Body",
+        transition: "Move your thumb over to the 5-way cluster",
+        ids: ["cy-r2c3","cy-r2c4","cy-r2c5","cy-r2c6",
+              "cy-r3c3","cy-r3c4","cy-r3c5","cy-r3c6",
+              "cy-r4c3","cy-r4c4","cy-r4c5","cy-r4c6","cy-r4c7",
+              "cy-r5c4","cy-r5c5","cy-r5c6","cy-r5c7"],
+    },
+    {
+        label: "5-Way Cluster",
+        transition: "Finally, press the joystick click",
+        ids: ["cy-r0c1","cy-r1c0","cy-r1c1","cy-r1c2","cy-r2c1"],
+    },
+    {
+        label: "Joystick Click",
+        transition: null,
+        ids: ["cy-r5c1"],
+    },
+];
+
+const CYRO_LH_SECTIONS = [
+    {
+        label: "Main Body",
+        transition: "Move your thumb over to the 5-way cluster",
+        ids: ["cy-lh-r2c3","cy-lh-r2c4","cy-lh-r2c5","cy-lh-r2c6",
+              "cy-lh-r3c3","cy-lh-r3c4","cy-lh-r3c5","cy-lh-r3c6",
+              "cy-lh-r4c3","cy-lh-r4c4","cy-lh-r4c5","cy-lh-r4c6","cy-lh-r4c7",
+              "cy-lh-r5c4","cy-lh-r5c5","cy-lh-r5c6","cy-lh-r5c7"],
+    },
+    {
+        label: "5-Way Cluster",
+        transition: "Finally, press the joystick click",
+        ids: ["cy-lh-r0c1","cy-lh-r1c0","cy-lh-r1c1","cy-lh-r1c2","cy-lh-r2c1"],
+    },
+    {
+        label: "Joystick Click",
+        transition: null,
+        ids: ["cy-lh-r5c1"],
+    },
+];
+
 const DEVICE_CONFIGS = {
     'cyborg2': {
         name: 'LH Cyborg II',
@@ -147,6 +285,7 @@ const DEVICE_CONFIGS = {
         joystick: { left: 434, top: 286 },
         contentWidth: 665,
         autoDetectDevice: 8,
+        calibrationSections: CYBORG2_SECTIONS,
     },
     'cyborg2-lefty': {
         name: 'RH Cyborg II',
@@ -155,6 +294,7 @@ const DEVICE_CONFIGS = {
         joystick: { left: 111, top: 286 },
         contentWidth: 665,
         autoDetectDevice: null,
+        calibrationSections: CYBORG2_SECTIONS,
     },
     'keyzen': {
         name: 'LH Keyzen',
@@ -163,6 +303,7 @@ const DEVICE_CONFIGS = {
         joystick: { left: 430, top: 261 },
         contentWidth: 631,
         autoDetectDevice: [8, 9],
+        calibrationSections: KEYZEN_SECTIONS,
     },
     'cyro': {
         name: 'RH Cyro',
@@ -171,6 +312,7 @@ const DEVICE_CONFIGS = {
         joystick: { left: 84, top: 291 },
         contentWidth: 581,
         autoDetectDevice: 4,
+        calibrationSections: CYRO_SECTIONS,
     },
     'cyro-lh': {
         name: 'LH Cyro',
@@ -179,6 +321,7 @@ const DEVICE_CONFIGS = {
         joystick: { left: 377, top: 291 },
         contentWidth: 497,
         autoDetectDevice: null,
+        calibrationSections: CYRO_LH_SECTIONS,
     },
     'keyzen-rh': {
         name: 'RH Keyzen',
@@ -187,6 +330,7 @@ const DEVICE_CONFIGS = {
         joystick: { left: 161, top: 271 },
         contentWidth: 697,
         autoDetectDevice: null,
+        calibrationSections: KEYZEN_RH_SECTIONS,
     },
 };
 
@@ -251,7 +395,19 @@ function connectWebSocket() {
         const active = document.activeElement;
         if (active === popupLabelInput || active === popupKeybindInput) return;
 
-        const { key, action } = JSON.parse(event.data);
+        const msg = JSON.parse(event.data);
+
+        if (msg.type === "device_info") {
+            handleDeviceInfo(msg.pid);
+            return;
+        }
+
+        const { key, action } = msg;
+
+        if (calibrationActive && action === "down") {
+            calibrationRecordKey(key);
+            return;
+        }
 
         if (key in movementState) movementState[key] = action === "down";
         updateJoystick();
@@ -261,6 +417,271 @@ function connectWebSocket() {
         el.classList.toggle("active", action === "down");
     };
 }
+
+
+
+/* -----------------------------
+   CALIBRATION WIZARD
+----------------------------- */
+
+const SUPPORTED_PIDS = {
+    // Add known PIDs here as they are confirmed
+    // "0CD3": "Cyborg II Rev1",
+};
+
+// Built lazily on first use so DEVICE_CONFIGS and keys are already defined
+let _calibrationOrder = null;
+function getCalibrationSections() {
+    return DEVICE_CONFIGS[activeDeviceId]?.calibrationSections || null;
+}
+function getCalibrationOrder() {
+    if (!_calibrationOrder) {
+        const sections = getCalibrationSections();
+        if (sections) {
+            _calibrationOrder = sections.flatMap(s => s.ids);
+        } else {
+            const cfg = DEVICE_CONFIGS[activeDeviceId];
+            _calibrationOrder = (cfg?.keys || keys).map(k => k.id);
+        }
+    }
+    return _calibrationOrder;
+}
+function getSectionAtStep(step) {
+    const sections = getCalibrationSections();
+    if (!sections) return null;
+    let offset = 0;
+    for (let i = 0; i < sections.length; i++) {
+        offset += sections[i].ids.length;
+        if (step < offset) return sections[i];
+    }
+    return null;
+}
+function isSectionBoundary(step) {
+    const sections = getCalibrationSections();
+    if (!sections) return false;
+    let offset = 0;
+    for (let i = 0; i < sections.length - 1; i++) {
+        offset += sections[i].ids.length;
+        if (step === offset) return sections[i]; // returns completed section
+    }
+    return false;
+}
+
+let calibrationActive = false;
+let calibrationStep   = 0;
+let calibrationMap    = {};
+let devicePid         = null;
+
+function handleDeviceInfo(pid) {
+    devicePid = pid;
+    if (!pid) return;
+    if (SUPPORTED_PIDS[pid]) {
+        calibrationStatus.textContent = `Hardware supported natively (${SUPPORTED_PIDS[pid]})`;
+        calibrationStatus.style.display = "block";
+        calibrateBtn.textContent = "Recalibrate Buttons…";
+    } else {
+        const saved = loadCalibration();
+        if (saved) {
+            calibrationStatus.textContent = "Calibrated — highlights active";
+            calibrationStatus.style.display = "block";
+            calibrateBtn.textContent = "Recalibrate Buttons…";
+        } else {
+            calibrationStatus.textContent = "Unknown hardware — calibration recommended";
+            calibrationStatus.style.color = "#f0a500";
+            calibrationStatus.style.display = "block";
+        }
+    }
+}
+
+function loadCalibration() {
+    try {
+        const raw = localStorage.getItem("calibration_" + activeDeviceId);
+        return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+}
+
+function saveCalibration(map) {
+    localStorage.setItem("calibration_" + activeDeviceId, JSON.stringify(map));
+}
+
+function applyCalibration(map) {
+    for (const [elementId, keyValue] of Object.entries(map)) {
+        if (!keyValue) continue;
+        const keyObj = keys.find(k => k.id === elementId);
+        if (!keyObj) continue;
+        if (keyObj.keybind) delete keyMap[keyObj.keybind];
+        // keyValue may be a string (single key or "shift+i") or array (e.g. ["i","o"] from I+O bind)
+        const allKeys = Array.isArray(keyValue) ? keyValue : [keyValue];
+        keyObj.keybind = allKeys[0];
+        allKeys.forEach(k => { if (k) keyMap[k] = elementId; });
+    }
+}
+
+function positionCalibrationPanel() {
+    let gridBottom = 0;
+    overlayContent.querySelectorAll(".key").forEach(k => {
+        const b = k.getBoundingClientRect().bottom;
+        if (b > gridBottom) gridBottom = b;
+    });
+    const overlayTop = overlay.getBoundingClientRect().top;
+    const panel = document.getElementById("calibration-panel");
+    panel.style.top = (gridBottom - overlayTop + 8) + "px";
+}
+
+function startCalibration() {
+    calibrationActive    = true;
+    calibrationComboKeys = [];
+    if (calibrationComboTimer) { clearTimeout(calibrationComboTimer); calibrationComboTimer = null; }
+    calibrationStep   = 0;
+    calibrationMap    = {};
+    calibrationWizard.classList.add("active");
+    overlayContent.classList.remove("edit-mode");
+    positionCalibrationPanel();
+    showCalibrationStep();
+}
+
+let calibrationSkipTimer   = null;
+let calibrationCountdown   = 0;
+const CALIBRATION_SKIP_SEC = 8;
+
+function clearCalibrationTimer() {
+    if (calibrationSkipTimer) { clearInterval(calibrationSkipTimer); calibrationSkipTimer = null; }
+}
+
+function startCalibrationTimer() {
+    clearCalibrationTimer();
+    calibrationCountdown = CALIBRATION_SKIP_SEC;
+    updateCalibrationPrompt();
+    calibrationSkipTimer = setInterval(() => {
+        calibrationCountdown--;
+        updateCalibrationPrompt();
+        if (calibrationCountdown <= 0) {
+            clearCalibrationTimer();
+            calibrationMap[getCalibrationOrder()[calibrationStep]] = null;
+            calibrationStep++;
+            advanceCalibrationStep();
+        }
+    }, 1000);
+}
+
+function updateCalibrationPrompt() {
+    calibrationPrompt.textContent =
+        `Press the highlighted button on your Azeron (auto-skip in ${calibrationCountdown}s if unbound)`;
+}
+
+function showSectionBreak(completedSection) {
+    clearCalibrationTimer();
+    document.querySelectorAll(".key.calibrating").forEach(k => k.classList.remove("calibrating"));
+    calibrationBreakMsg.textContent = completedSection.transition;
+    const nextSection = getSectionAtStep(calibrationStep);
+    calibrationBreakNext.textContent = nextSection ? `Next: ${nextSection.label}` : "";
+    calibrationStepsView.style.display = "none";
+    calibrationBreakView.style.display = "flex";
+}
+
+function resumeFromSectionBreak() {
+    calibrationBreakView.style.display = "none";
+    calibrationStepsView.style.display = "";
+    showCalibrationStep();
+}
+
+function advanceCalibrationStep() {
+    const boundary = isSectionBoundary(calibrationStep);
+    if (boundary) {
+        showSectionBreak(boundary);
+    } else if (calibrationStep >= getCalibrationOrder().length) {
+        finishCalibration();
+    } else {
+        showCalibrationStep();
+    }
+}
+
+function showCalibrationStep() {
+    clearCalibrationTimer();
+    document.querySelectorAll(".key.calibrating").forEach(k => k.classList.remove("calibrating"));
+    if (calibrationStep >= getCalibrationOrder().length) {
+        finishCalibration();
+        return;
+    }
+    const section = getSectionAtStep(calibrationStep);
+    calibrationSectionLabel.textContent = section ? section.label : "";
+    const elementId = getCalibrationOrder()[calibrationStep];
+    const el = document.getElementById(elementId);
+    if (el) {
+        el.classList.add("calibrating");
+        el.scrollIntoView?.({ block: "nearest" });
+    }
+    calibrationProgress.textContent =
+        `Button ${calibrationStep + 1} of ${getCalibrationOrder().length}`;
+    startCalibrationTimer();
+}
+
+let calibrationComboKeys  = [];
+let calibrationComboTimer = null;
+
+function flushCalibrationCombo() {
+    calibrationComboTimer = null;
+    if (!calibrationActive || calibrationComboKeys.length === 0) return;
+    const collected = [...calibrationComboKeys];
+    calibrationComboKeys = [];
+    clearCalibrationTimer();
+    const elementId = getCalibrationOrder()[calibrationStep];
+    // Store as a single string for one key, or array for multi-key binds (e.g. I+O)
+    calibrationMap[elementId] = collected.length === 1 ? collected[0] : collected;
+    calibrationStep++;
+    advanceCalibrationStep();
+}
+
+function calibrationRecordKey(key) {
+    calibrationComboKeys.push(key);
+    if (calibrationComboTimer) clearTimeout(calibrationComboTimer);
+    // 100ms window — long enough to catch the second key of I+O, fast enough not to feel slow
+    calibrationComboTimer = setTimeout(flushCalibrationCombo, 100);
+}
+
+function finishCalibration() {
+    calibrationActive = false;
+    calibrationWizard.classList.remove("active");
+    document.querySelectorAll(".key.calibrating").forEach(k => k.classList.remove("calibrating"));
+    saveCalibration(calibrationMap);
+    applyCalibration(calibrationMap);
+    calibrationStatus.textContent = "Calibrated — highlights active";
+    calibrationStatus.style.color = "#aaa";
+    calibrationStatus.style.display = "block";
+    calibrateBtn.textContent = "Recalibrate Buttons…";
+}
+
+function cancelCalibration() {
+    clearCalibrationTimer();
+    if (calibrationComboTimer) { clearTimeout(calibrationComboTimer); calibrationComboTimer = null; }
+    calibrationComboKeys = [];
+    calibrationActive    = false;
+    calibrationWizard.classList.remove("active");
+    calibrationBreakView.style.display = "none";
+    calibrationStepsView.style.display = "";
+    document.querySelectorAll(".key.calibrating").forEach(k => k.classList.remove("calibrating"));
+}
+
+calibrateBtn.addEventListener("click", () => {
+    optionsPanel.style.display = "none";
+    overlayContent.classList.remove("edit-mode");
+    startCalibration();
+});
+
+calibrationSkipBtn.addEventListener("click", () => {
+    clearCalibrationTimer();
+    calibrationMap[getCalibrationOrder()[calibrationStep]] = null;
+    calibrationStep++;
+    advanceCalibrationStep();
+});
+
+calibrationCancelBtn.addEventListener("click", cancelCalibration);
+calibrationContinueBtn.addEventListener("click", resumeFromSectionBreak);
+calibrationCancelBreakBtn.addEventListener("click", cancelCalibration);
+
+// Apply any saved calibration on load
+const _savedCal = loadCalibration();
+if (_savedCal) applyCalibration(_savedCal);
 
 
 
@@ -425,6 +846,24 @@ optionsUi.addEventListener("mouseenter", () => { if (isClickthrough) ipcRenderer
 optionsUi.addEventListener("mouseleave", () => { if (isClickthrough) ipcRenderer.send("set-clickthrough", true);  });
 
 clickthroughBtn.addEventListener("click", () => setClickthrough(!isClickthrough));
+
+setClickthrough(true);
+
+/* ---- PRIVACY / DATA SHARING ---- */
+
+let shareAnonymousData = true; // mirrors installer default (opt-out)
+
+ipcRenderer.invoke('get-prefs').then(prefs => {
+    if (typeof prefs.shareAnonymousData === 'boolean') {
+        shareAnonymousData = prefs.shareAnonymousData;
+    }
+    shareDataCheck.checked = shareAnonymousData;
+});
+
+shareDataCheck.addEventListener('change', () => {
+    shareAnonymousData = shareDataCheck.checked;
+    ipcRenderer.send('set-pref', 'shareAnonymousData', shareAnonymousData);
+});
 
 resetPositionBtn.addEventListener("click", resetPosition);
 
@@ -605,10 +1044,10 @@ function applyAzeronProfile(profile) {
     }
 
     let pinToKeyId = DEVICE_CONFIGS[activeDeviceId].pinToKeyId;
-    // Cyborg II firmware v1.5.x exports pin 0; use a dedicated map to preserve correct
-    // physical positions (the v1 map used 1-based pin numbering from an older firmware).
+    // Benji-style firmware has pins up to 43 (pins 38+). The user's firmware tops out at 37.
+    // Both export pin=0 (encoder) so we distinguish by checking for pins above 37.
     if ((activeDeviceId === 'cyborg2' || activeDeviceId === 'cyborg2-lefty') &&
-        profile.inputs.some(inp => inp.pinOne === 0)) {
+        profile.inputs.some(inp => inp.pinOne > 37 && inp.pinOne !== 255)) {
         pinToKeyId = PIN_TO_KEY_ID_CYBORG2_V2;
     }
 
@@ -821,6 +1260,7 @@ function switchDevice(deviceId) {
 
     activeDeviceId = deviceId;
     localStorage.setItem("activeDevice", deviceId);
+    _calibrationOrder = null; // reset so getCalibrationOrder() rebuilds for new device
 
     const config = DEVICE_CONFIGS[deviceId];
 

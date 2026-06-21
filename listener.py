@@ -7,6 +7,11 @@ import websockets
 
 AZERON_VID       = "VID_16D0"
 MODIFIER_VKS     = frozenset([0x10, 0x11, 0x12, 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5])
+MODIFIER_NAMES   = {
+    0x10: "shift", 0xA0: "shift", 0xA1: "shift",
+    0x11: "ctrl",  0xA2: "ctrl",  0xA3: "ctrl",
+    0x12: "alt",   0xA4: "alt",   0xA5: "alt",
+}
 
 VK_NAMES = {
     0x08: "backspace", 0x09: "tab",    0x0D: "enter",  0x1B: "esc",
@@ -99,10 +104,12 @@ class MSG(ctypes.Structure):
 connected_clients = set()
 pending_combos    = {}
 async_loop        = None
+device_info       = {"pid": None}
 
 
 def find_azeron_handles():
     """Return all raw input device handles whose HID path contains AZERON_VID."""
+    import re
     user32  = ctypes.windll.user32
     num     = wintypes.UINT(0)
     user32.GetRawInputDeviceList(None, ctypes.byref(num), ctypes.sizeof(RAWINPUTDEVICELIST))
@@ -122,6 +129,10 @@ def find_azeron_handles():
         user32.GetRawInputDeviceInfoW(dev.hDevice, RIDI_DEVICENAME, buf, ctypes.byref(sz))
         if AZERON_VID.upper() in buf.value.upper():
             print(f"Azeron device found: {buf.value}", flush=True)
+            m = re.search(r'PID_([0-9A-Fa-f]+)', buf.value, re.IGNORECASE)
+            if m:
+                device_info["pid"] = m.group(1).upper()
+                print(f"Azeron PID: {device_info['pid']}", flush=True)
             handles.add(dev.hDevice)
     return handles
 
@@ -145,6 +156,7 @@ def build_combo(key):
 async def websocket_handler(websocket):
     connected_clients.add(websocket)
     try:
+        await websocket.send(json.dumps({"type": "device_info", "pid": device_info["pid"]}))
         await websocket.wait_closed()
     finally:
         connected_clients.discard(websocket)
@@ -161,6 +173,10 @@ def run_raw_input_loop(azeron_handles):
     kernel32  = ctypes.windll.kernel32
     hinstance = kernel32.GetModuleHandleW(None)
 
+    # Track modifier state purely through Raw Input (not GetAsyncKeyState)
+    # to correctly detect standalone modifier presses (e.g. a button bound to just Ctrl).
+    mod_state = {"held": set(), "non_mod_pressed": False}
+
     def wnd_proc(hwnd, msg, wparam, lparam):
         if msg == WM_INPUT:
             sz = wintypes.UINT(0)
@@ -174,7 +190,28 @@ def run_raw_input_loop(azeron_handles):
                 mcode = raw.keyboard.MakeCode
                 is_up = bool(raw.keyboard.Flags & RI_KEY_BREAK)
 
-                if vk not in MODIFIER_VKS:
+                if vk in MODIFIER_VKS:
+                    if not is_up:
+                        # First modifier of a fresh chord — reset the tracker
+                        if not mod_state["held"]:
+                            mod_state["non_mod_pressed"] = False
+                        mod_state["held"].add(vk)
+                    else:
+                        mod_state["held"].discard(vk)
+                        # If nothing else was pressed while this modifier was held, emit standalone
+                        if not mod_state["non_mod_pressed"]:
+                            name = MODIFIER_NAMES.get(vk)
+                            if name:
+                                print(name, flush=True)
+                                if async_loop and async_loop.is_running():
+                                    asyncio.run_coroutine_threadsafe(
+                                        send_key_event(name, "down"), async_loop
+                                    )
+                                    asyncio.run_coroutine_threadsafe(
+                                        send_key_event(name, "up"), async_loop
+                                    )
+                else:
+                    mod_state["non_mod_pressed"] = True
                     key = vkey_to_name(vk)
                     if key:
                         if not is_up:

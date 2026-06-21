@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain, screen, globalShortcut } from 'electron';
 import { spawn } from 'child_process';
 import path from 'path';
+import fs from 'fs';
 import { createRequire } from 'module';
 
 const require = createRequire(import.meta.url);
@@ -84,6 +85,22 @@ ipcMain.handle("move-to-display", (_event, displayId) => {
 
 ipcMain.on("install-update", () => { if (app.isPackaged) autoUpdater.quitAndInstall(); });
 ipcMain.on("retry-update",   () => { if (app.isPackaged) autoUpdater.checkForUpdates(); });
+
+function prefsPath() {
+    return path.join(app.getPath('userData'), 'prefs.json');
+}
+ipcMain.handle('get-prefs', () => {
+    try { return JSON.parse(fs.readFileSync(prefsPath(), 'utf8')); } catch { return {}; }
+});
+ipcMain.on('set-pref', (_e, key, value) => {
+    try {
+        let prefs = {};
+        try { prefs = JSON.parse(fs.readFileSync(prefsPath(), 'utf8')); } catch {}
+        prefs[key] = value;
+        fs.mkdirSync(path.dirname(prefsPath()), { recursive: true });
+        fs.writeFileSync(prefsPath(), JSON.stringify(prefs));
+    } catch (e) { console.error('Failed to write prefs:', e); }
+});
 
 function killPython() {
     if (!pythonProcess) return;

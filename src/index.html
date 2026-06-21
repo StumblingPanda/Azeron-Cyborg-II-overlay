@@ -47,6 +47,12 @@
                             <option value="cyro-lh">LH Cyro</option>
                         </select>
                     </div>
+                    <div id="calibration-status" style="font-size:11px;color:#aaa;display:none"></div>
+                    <button id="calibrate-btn" class="options-btn">Calibrate Buttons…</button>
+                    <div class="options-row">
+                        <label for="share-data-check" style="color:#888;cursor:pointer">Share anonymous data</label>
+                        <input type="checkbox" id="share-data-check" checked>
+                    </div>
                 </div>
 
                 <div class="options-section">
@@ -71,10 +77,14 @@
 
                 <div class="options-section">
                     <div class="options-title">Overlay</div>
-                    <button id="unlock-btn" class="options-btn">Unlock Position</button>
-                    <button id="clickthrough-btn" class="options-btn">Enable Clickthrough</button>
-                    <button id="reset-position-btn" class="options-btn">Reset Position</button>
-                    <button id="monitor-btn" class="options-btn" style="display:none">Monitor: 1 / 1</button>
+                    <div class="options-btn-row">
+                        <button id="unlock-btn" class="options-btn">Unlock Position</button>
+                        <button id="clickthrough-btn" class="options-btn">Enable Clickthrough</button>
+                    </div>
+                    <div class="options-btn-row">
+                        <button id="reset-position-btn" class="options-btn">Reset Position</button>
+                        <button id="monitor-btn" class="options-btn" style="display:none">Monitor: 1 / 1</button>
+                    </div>
                 </div>
 
                 <div class="options-section">
@@ -124,6 +134,32 @@
 
             </div>
 
+        </div>
+
+        <div id="calibration-wizard">
+            <div id="calibration-panel">
+                <div id="calibration-title">Button Calibration</div>
+
+                <div id="calibration-steps-view">
+                    <div id="calibration-section-label"></div>
+                    <div id="calibration-prompt"></div>
+                    <div id="calibration-progress"></div>
+                    <div id="calibration-actions">
+                        <button id="calibration-skip-btn" class="options-btn">Skip</button>
+                        <button id="calibration-cancel-btn" class="options-btn">Cancel</button>
+                    </div>
+                </div>
+
+                <div id="calibration-break-view" style="display:none">
+                    <div id="calibration-break-check">✓</div>
+                    <div id="calibration-break-msg"></div>
+                    <div id="calibration-break-next"></div>
+                    <div id="calibration-break-actions">
+                        <button id="calibration-continue-btn" class="options-btn">Continue →</button>
+                        <button id="calibration-cancel-break-btn" class="options-btn">Cancel</button>
+                    </div>
+                </div>
+            </div>
         </div>
 
     </div>

@@ -1,6 +1,6 @@
 {
   "name": "azeron-overlay",
-  "version": "1.3.3",
+  "version": "1.4.0",
   "description": "Azeron Cyborg II keypad overlay for gaming",
   "author": "stumblingpanda",
   "main": "main.js",
@@ -31,7 +31,8 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "artifactName": "${productName}-Setup-${version}.${ext}"
+      "artifactName": "${productName}-Setup-${version}.${ext}",
+      "include": "build/installer.nsh"
     },
     "publish": {
       "provider": "github",
