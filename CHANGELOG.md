@@ -19,28 +19,28 @@ All notable changes to Azeron Overlay are documented here.
 
 ---
 
-## [1.3.1] - 2026-05-XX
+## [1.3.1] - 2026-06-19
 
 ### Fixed
 - Overlay key labels are now normalized to uppercase
 
 ---
 
-## [1.3.0] - 2026-05-XX
+## [1.3.0] - 2026-06-19
 
 ### Added
 - Multi-device support: Keyzen and Cyro layouts added alongside Cyborg II
 
 ---
 
-## [1.2.4] - 2026-04-XX
+## [1.2.4] - 2026-06-18
 
 ### Added
 - Support for Azeron Software 2.0 export format alongside 1.5.6
 
 ---
 
-## [1.2.3] - 2026-04-XX
+## [1.2.3] - 2026-06-18
 
 ### Added
 - Multi-line labels in key popup
@@ -48,14 +48,14 @@ All notable changes to Azeron Overlay are documented here.
 
 ---
 
-## [1.2.2] - 2026-04-XX
+## [1.2.2] - 2026-06-17
 
 ### Changed
 - Replaced global keyboard hook with Raw Input API filtered to Azeron device (VID_16D0) — eliminates interference from other keyboards
 
 ---
 
-## [1.2.1] - 2026-04-XX
+## [1.2.1] - 2026-06-17
 
 ### Added
 - Close button in overlay
@@ -64,49 +64,63 @@ All notable changes to Azeron Overlay are documented here.
 
 ---
 
-## [1.1.11] - 2026-03-XX
+## [1.2.0] - 2026-06-17
+
+### Added
+- (Foundation release for 1.2.x line)
+
+---
+
+## [1.1.12] - 2026-06-17
+
+### Added
+- App icon
+
+---
+
+## [1.1.11] - 2026-06-16
 
 ### Added
 - Joystick direction keys now imported from Azeron profile
 
 ---
 
-## [1.1.10] - 2026-03-XX
+## [1.1.10] - 2026-06-16
 
 ### Fixed
 - Modifier-only key import (Ctrl, Shift, Alt as standalone bindings)
 
 ---
 
-## [1.1.9] - 2026-03-XX
+## [1.1.9] - 2026-06-16
 
 ### Fixed
 - All modifier key combinations can now be used as keybinds
 
 ---
 
-## [1.1.6] - 2026-03-XX
+## [1.1.6] - 2026-06-16
 
 ### Fixed
 - Profile import now uses the keybind as a label fallback when no label is set in the profile
 
 ---
 
-## [1.1.5] - 2026-03-XX
+## [1.1.5] - 2026-06-16
 
 ### Fixed
 - Options panel no longer clips at the top of the screen
 
 ---
 
-## [1.1.4] - 2026-03-XX
+## [1.1.4] - 2026-06-16
 
 ### Fixed
 - Auto-updater errors are now shown in the UI instead of failing silently
 
 ---
 
-## [1.1.0] - 2026-03-XX
+## [1.1.0] - 2026-06-15
 
 ### Added
 - Azeron profile import
@@ -114,7 +128,7 @@ All notable changes to Azeron Overlay are documented here.
 
 ---
 
-## [1.0.0] - 2026-02-XX
+## [1.0.0] - 2026-06-15
 
 ### Added
 - Initial release
