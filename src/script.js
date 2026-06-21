@@ -62,6 +62,34 @@ const PIN_TO_KEY_ID_CYBORG2 = {
     35: "spellbook-talents",     36: "dungeon-portals",     37: "social-esc",
 };
 
+// Cyborg II firmware v1.5.x uses 0-based pin numbering — physically different from v1 map.
+// Derived from Benji_Profile.json cross-referenced with Azeron Software 1.5.6 screenshot.
+const PIN_TO_KEY_ID_CYBORG2_V2 = {
+    // Row 1 — top row main cluster (left → right)
+    22: "map-dungeon-finder",   39: "row1-btn2",    3: "row1-btn3",    9: "row1-btn4",
+    // Row 1 — extended right module (C, empty slot, O)
+    14: "spellbook-talents",   17: "social-esc",   12: "utility-ring",
+    // Row 2 — main cluster
+    23: "crusaders-strike",    38: "judgement",     2: "consecrate",    8: "focus-target-macro",
+    // Row 2 — right module (B)
+    13: "dungeon-portals",
+    // Row 3 — main cluster (ESC + 5 buttons)
+    21: "light-of-dawn",       24: "holy-shock",   18: "flash-of-light",
+     1: "holy-light",           7: "word-of-glory", 10: "extra-actionbutton",
+    // Row 3 — far right (Tab; pinOne=255 in v1.5.x for software-layer keys)
+   255: "appearances-log",
+    // Row 4 — main cluster
+    25: "hammer-of-wrath",     19: "blessing-of-seasons",  0: "kick",   5: "racial-ability",
+    // Row 4 — far right (Ctrl+Shift+F1; pins 28 and 43 are the same physical button)
+    28: "mount-journal",       43: "mount-journal",
+    // Row 5 — main cluster
+    26: "mage-food-mana-drink", 20: "combat-ress", 27: "lay-on-hands",  4: "jump",
+    // Row 5 — right (joystick button)
+    40: "movement-ability",
+    // Row 0 — single top button
+    11: "bags-character",
+};
+
 // All 22 keyboard buttons mapped. cy-r4c3 is the scroll encoder (no keyboard event).
 const PIN_TO_KEY_ID_CYRO = {
     // Row 2 right (JOY #4, #3, #2, #1)
@@ -503,6 +531,15 @@ const WEB_CODE_TO_KEY = {
     NumpadDecimal: "num.", NumpadDivide: "num/", NumpadEnter: "enter",
 };
 
+// Azeron v1.5.x type-16 macro kv values that don't correspond to Windows VK codes.
+// Derived empirically from Benji_Profile.json cross-referenced with Azeron Software key labels.
+const AZERON_MACRO_KV_OVERRIDE = {
+     5: "num*",  6: "num0",
+     7: "9",    11: "7",   12: "5",   13: "2",
+    16: "-",    17: "[",   19: "]",
+    25: "u",
+};
+
 function resolveKey(val) {
     if (!val || val === "0") return null;
     const letter = val.match(/^Key([A-Z])$/);
@@ -556,7 +593,13 @@ function applyAzeronProfile(profile) {
         }
     }
 
-    const pinToKeyId = DEVICE_CONFIGS[activeDeviceId].pinToKeyId;
+    let pinToKeyId = DEVICE_CONFIGS[activeDeviceId].pinToKeyId;
+    // Cyborg II firmware v1.5.x exports pin 0; use a dedicated map to preserve correct
+    // physical positions (the v1 map used 1-based pin numbering from an older firmware).
+    if ((activeDeviceId === 'cyborg2' || activeDeviceId === 'cyborg2-lefty') &&
+        profile.inputs.some(inp => inp.pinOne === 0)) {
+        pinToKeyId = PIN_TO_KEY_ID_CYBORG2_V2;
+    }
 
     const joystickInput = profile.inputs.find(
         inp => (inp.types?.[0] === "4" || inp.types?.[0] === "21") &&
@@ -585,7 +628,15 @@ function applyAzeronProfile(profile) {
         if (!keyObj) continue;
 
         const label    = (input.label || "").trim();
-        const isKbd     = input.types?.[0] === "1" && !!resolveKey(input.keyValues?.[0]);
+        // For type-16 macros, Azeron uses its own kv numbering for low values (< 48).
+        // Look up the known override first; fall through to standard VK resolution otherwise.
+        const macroOverride = input.types?.[0] === "16"
+            ? (AZERON_MACRO_KV_OVERRIDE[parseInt(input.keyValues?.[0])] ?? null)
+            : null;
+        const isKbd     = macroOverride !== null ||
+                          ((input.types?.[0] === "1" || input.types?.[0] === "16") &&
+                           !!resolveKey(input.keyValues?.[0]) &&
+                           !resolveModifier(input.keyValues?.[0]));
         const isModOnly = input.types?.[0] === "1" && !resolveKey(input.keyValues?.[0]) &&
                           !!resolveModifier(input.metaValues?.[0]);
         const isJoyBtn  = input.types?.[0] === "5" &&
@@ -600,16 +651,23 @@ function applyAzeronProfile(profile) {
         }
 
         if (isKbd) {
-            const keybind = buildKeybindString(input.keyValues[0], input.metaValues || []);
+            let keybind;
+            if (macroOverride !== null) {
+                const mods = new Set();
+                for (const mv of (input.metaValues || [])) {
+                    const mod = resolveModifier(mv);
+                    if (mod) mods.add(mod);
+                }
+                const modParts = ["ctrl", "shift", "alt"].filter(m => mods.has(m));
+                keybind = [...modParts, macroOverride].join("+") || null;
+            } else {
+                keybind = buildKeybindString(input.keyValues[0], input.metaValues || []);
+            }
             if (keybind) {
                 delete keyMap[keyObj.keybind];
                 keyObj.keybind = keybind;
                 keyMap[keybind] = keyId;
-                // Only lock this pin if keybind is not a bare symbol (=, -, [, etc.)
-                // so a later non-symbol assignment can still override it
-                if (!(keybind.length === 1 && /[^a-z0-9]/i.test(keybind))) {
-                    seenPins.add(input.pinOne);
-                }
+                seenPins.add(input.pinOne);
                 if (!label) {
                     keyObj.label = keybind;
                     const el = document.getElementById(keyId);
@@ -637,6 +695,24 @@ function applyAzeronProfile(profile) {
         }
         count++;
     }
+
+    // Clear any overlay element whose pin appears in this profile but was left unassigned
+    // (e.g. a 5-way center button set to type 11 with no keybind). Without this, old
+    // keybinds from a previous profile or manual entry would silently persist.
+    const profilePins = new Set(profile.inputs.map(inp => inp.pinOne));
+    for (const pin of profilePins) {
+        if (seenPins.has(pin)) continue;
+        const keyId = pinToKeyId[pin];
+        if (!keyId) continue;
+        const keyObj = keys.find(k => k.id === keyId);
+        if (!keyObj || (!keyObj.label && !keyObj.keybind)) continue;
+        delete keyMap[keyObj.keybind];
+        keyObj.keybind = "";
+        keyObj.label = "";
+        const el = document.getElementById(keyId);
+        if (el) el.innerText = "";
+    }
+
     saveKeybinds();
     return count;
 }
@@ -717,7 +793,13 @@ ipcRenderer.on("global-key", (_event, key) => {
 
 function saveKeybinds() {
     const data = {};
-    keys.forEach(k => { data[k.id] = { label: k.label, keybind: k.keybind }; });
+    keys.forEach(k => {
+        data[k.id] = { label: k.label, keybind: k.keybind };
+        const el = document.getElementById(k.id);
+        if (el && !el.classList.contains("scroll-indicator")) {
+            el.classList.toggle("empty", !k.label && !k.keybind);
+        }
+    });
     localStorage.setItem("keybinds_" + activeDeviceId, JSON.stringify(data));
 }
 
@@ -757,6 +839,7 @@ function switchDevice(deviceId) {
         } else {
             el.innerText = keyData.label;
             if (keyData.keybind) keyMap[keyData.keybind] = keyData.id;
+            el.classList.toggle("empty", !keyData.label && !keyData.keybind);
             el.addEventListener("click", (e) => {
                 if (optionsPanel.style.display !== "flex" || isClickthrough) return;
                 e.stopPropagation();

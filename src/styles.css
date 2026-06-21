@@ -86,9 +86,19 @@ body {
     cursor: default;
 }
 
+.key.empty {
+    opacity: 0;
+    pointer-events: none;
+}
+
 .edit-mode .key {
     cursor: pointer;
     outline: 1px dashed rgba(255, 255, 255, 0.2);
+}
+
+.edit-mode .key.empty {
+    opacity: 0.15;
+    pointer-events: auto;
 }
 
 .key.scroll-indicator {
