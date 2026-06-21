@@ -1,42 +1,17 @@
-; Custom installer page — asks for anonymous data sharing consent.
-; Checked by default (opt-out). Preference written to %APPDATA%\AzeronOverlay\prefs.json.
-
-Var ShareDataCheckbox
-Var ShareDataState
-
-!macro customHeader
-  Page custom ShareDataPage ShareDataLeave
-!macroend
-
-!macro customInit
-  StrCpy $ShareDataState 1
-!macroend
-
-Function ShareDataPage
-  nsDialogs::Create 1018
-  Pop $0
-
-  ${NSD_CreateLabel} 0 0 100% 70u "When you calibrate your Azeron using the built-in wizard, you can help other users by sharing your anonymous device layout data.$\n$\nThis builds a library of supported hardware configurations so future users are mapped automatically.$\n$\nNo personal information or key names are ever collected. You can change this at any time in the app settings."
-  Pop $0
-
-  ${NSD_CreateCheckBox} 0 80u 100% 12u "Share anonymous calibration data to help support more devices (recommended)"
-  Pop $ShareDataCheckbox
-  ${NSD_SetState} $ShareDataCheckbox $ShareDataState
-
-  nsDialogs::Show
-FunctionEnd
-
-Function ShareDataLeave
-  ${NSD_GetState} $ShareDataCheckbox $ShareDataState
-FunctionEnd
+; Asks for anonymous data sharing consent via a simple Yes/No dialog during install.
+; Preference is written to %APPDATA%\AzeronOverlay\prefs.json so the app can read it.
 
 !macro customInstall
-  CreateDirectory "$APPDATA\AzeronOverlay"
-  FileOpen $0 "$APPDATA\AzeronOverlay\prefs.json" w
-  ${If} $ShareDataState == 1
+  MessageBox MB_YESNO|MB_ICONQUESTION "Help improve Azeron Overlay!$\n$\nShare anonymous calibration data to help build a library of supported device configurations?$\n$\nNo personal information or key names are collected. You can change this at any time in the app settings." IDNO shareNo
+    CreateDirectory "$APPDATA\AzeronOverlay"
+    FileOpen $0 "$APPDATA\AzeronOverlay\prefs.json" w
     FileWrite $0 '{"shareAnonymousData":true}'
-  ${Else}
+    FileClose $0
+    Goto shareDone
+  shareNo:
+    CreateDirectory "$APPDATA\AzeronOverlay"
+    FileOpen $0 "$APPDATA\AzeronOverlay\prefs.json" w
     FileWrite $0 '{"shareAnonymousData":false}'
-  ${EndIf}
-  FileClose $0
+    FileClose $0
+  shareDone:
 !macroend
