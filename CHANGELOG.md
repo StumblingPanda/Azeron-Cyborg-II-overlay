@@ -16,6 +16,7 @@ All notable changes to Azeron Overlay are documented here.
 - Tab button (pin 255 in v1.5.x firmware) now imports correctly
 - Stale keybinds from a previous profile are cleared when re-importing
 - Unassigned buttons (type 11) in a new profile no longer retain old keybinds
+- Options panel now opens fully below the bottom row of buttons when the overlay is near the top of the screen
 
 ---
 

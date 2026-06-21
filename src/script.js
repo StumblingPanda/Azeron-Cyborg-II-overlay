@@ -273,13 +273,24 @@ closeButton.addEventListener("click", () => window.close());
 optionsButton.addEventListener("click", () => {
     const opening = optionsPanel.style.display !== "flex";
     if (opening) {
-        const spaceAbove = optionsButton.getBoundingClientRect().top;
+        const spaceAbove   = optionsButton.getBoundingClientRect().top;
         if (spaceAbove < 500) {
-            optionsPanel.style.bottom = "";
-            optionsPanel.style.top    = "46px";
+            // Not enough room above — open downward, anchored below the key grid
+            let gridBottom = 0;
+            overlayContent.querySelectorAll(".key").forEach(k => {
+                const b = k.getBoundingClientRect().bottom;
+                if (b > gridBottom) gridBottom = b;
+            });
+            const uiTop        = optionsPanel.parentElement.getBoundingClientRect().top;
+            const topOffset    = gridBottom - uiTop + 8;
+            const availableH   = window.innerHeight - uiTop - topOffset - 8;
+            optionsPanel.style.top       = topOffset + "px";
+            optionsPanel.style.bottom    = "auto";
+            optionsPanel.style.maxHeight = Math.max(200, availableH) + "px";
         } else {
-            optionsPanel.style.top    = "";
-            optionsPanel.style.bottom = "46px";
+            optionsPanel.style.top       = "auto";
+            optionsPanel.style.bottom    = "46px";
+            optionsPanel.style.maxHeight = "";
         }
     }
     optionsPanel.style.display = opening ? "flex" : "none";
