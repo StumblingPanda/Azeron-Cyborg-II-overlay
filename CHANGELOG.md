@@ -4,6 +4,18 @@ All notable changes to Azeron Overlay are documented here.
 
 ---
 
+## [1.4.3] - 2026-06-21
+
+### Added
+- Back button in calibration wizard steps view — lets users redo the previous button if they misclicked, disabled on the first step
+- Back button on section break screen — lets users redo the last button of a completed section before moving on
+
+### Fixed
+- Clickthrough mode now stays disabled for the entire calibration wizard including section break screens
+- Calibration wizard no longer re-enables clickthrough if the options panel mouseleave event fired at the same time as a section boundary
+
+---
+
 ## [1.4.2] - 2026-06-21
 
 ### Fixed

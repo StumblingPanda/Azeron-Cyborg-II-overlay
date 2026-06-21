@@ -54,12 +54,14 @@ const calibrationStepsView   = document.getElementById("calibration-steps-view")
 const calibrationSectionLabel= document.getElementById("calibration-section-label");
 const calibrationPrompt      = document.getElementById("calibration-prompt");
 const calibrationProgress    = document.getElementById("calibration-progress");
+const calibrationBackBtn     = document.getElementById("calibration-back-btn");
 const calibrationSkipBtn     = document.getElementById("calibration-skip-btn");
 const calibrationCancelBtn   = document.getElementById("calibration-cancel-btn");
 const calibrationBreakView   = document.getElementById("calibration-break-view");
 const calibrationBreakMsg    = document.getElementById("calibration-break-msg");
 const calibrationBreakNext   = document.getElementById("calibration-break-next");
-const calibrationContinueBtn = document.getElementById("calibration-continue-btn");
+const calibrationBreakBackBtn  = document.getElementById("calibration-break-back-btn");
+const calibrationContinueBtn   = document.getElementById("calibration-continue-btn");
 const calibrationCancelBreakBtn = document.getElementById("calibration-cancel-break-btn");
 const calibrationStatus      = document.getElementById("calibration-status");
 
@@ -585,6 +587,8 @@ function showSectionBreak(completedSection) {
     calibrationBreakNext.textContent = nextSection ? `Next: ${nextSection.label}` : "";
     calibrationStepsView.style.display = "none";
     calibrationBreakView.style.display = "flex";
+    // Re-assert clickthrough is off — mouseleave on the options panel can race with this
+    ipcRenderer.send("set-clickthrough", false);
 }
 
 function resumeFromSectionBreak() {
@@ -621,6 +625,7 @@ function showCalibrationStep() {
     }
     calibrationProgress.textContent =
         `Button ${calibrationStep + 1} of ${getCalibrationOrder().length}`;
+    calibrationBackBtn.disabled = calibrationStep === 0;
     startCalibrationTimer();
 }
 
@@ -711,6 +716,17 @@ calibrateBtn.addEventListener("click", () => {
     startCalibration();
 });
 
+calibrationBackBtn.addEventListener("click", () => {
+    if (calibrationStep === 0) return;
+    clearCalibrationTimer();
+    if (calibrationComboTimer) { clearTimeout(calibrationComboTimer); calibrationComboTimer = null; }
+    calibrationComboKeys = [];
+    const prevId = getCalibrationOrder()[calibrationStep - 1];
+    delete calibrationMap[prevId];
+    calibrationStep--;
+    showCalibrationStep();
+});
+
 calibrationSkipBtn.addEventListener("click", () => {
     clearCalibrationTimer();
     calibrationMap[getCalibrationOrder()[calibrationStep]] = null;
@@ -719,6 +735,16 @@ calibrationSkipBtn.addEventListener("click", () => {
 });
 
 calibrationCancelBtn.addEventListener("click", cancelCalibration);
+calibrationBreakBackBtn.addEventListener("click", () => {
+    if (calibrationComboTimer) { clearTimeout(calibrationComboTimer); calibrationComboTimer = null; }
+    calibrationComboKeys = [];
+    const prevId = getCalibrationOrder()[calibrationStep - 1];
+    delete calibrationMap[prevId];
+    calibrationStep--;
+    calibrationBreakView.style.display = "none";
+    calibrationStepsView.style.display = "";
+    showCalibrationStep();
+});
 calibrationContinueBtn.addEventListener("click", resumeFromSectionBreak);
 calibrationCancelBreakBtn.addEventListener("click", cancelCalibration);
 
@@ -905,7 +931,7 @@ function setClickthrough(value) {
 }
 
 optionsUi.addEventListener("mouseenter", () => { if (isClickthrough) ipcRenderer.send("set-clickthrough", false); });
-optionsUi.addEventListener("mouseleave", () => { if (isClickthrough) ipcRenderer.send("set-clickthrough", true);  });
+optionsUi.addEventListener("mouseleave", () => { if (isClickthrough && !calibrationActive) ipcRenderer.send("set-clickthrough", true); });
 
 clickthroughBtn.addEventListener("click", () => setClickthrough(!isClickthrough));
 
