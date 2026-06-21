@@ -13,8 +13,6 @@ Var ShareDataState
 !macroend
 
 Function ShareDataPage
-  !insertmacro MUI_HEADER_TEXT "Help Improve Device Support" "Share anonymous calibration data (optional)"
-
   nsDialogs::Create 1018
   Pop $0
 
