@@ -36,12 +36,13 @@ const updateStatusText    = document.getElementById("update-status-text");
 const installUpdateBtn    = document.getElementById("install-update-btn");
 const retryUpdateBtn      = document.getElementById("retry-update-btn");
 const updateBadge         = document.getElementById("update-badge");
-const importProfileBtn    = document.getElementById("import-profile-btn");
-const importFileInput     = document.getElementById("import-file-input");
-const profileSelectRow    = document.getElementById("profile-select-row");
-const profileSelect       = document.getElementById("profile-select");
-const profileApplyBtn     = document.getElementById("profile-apply-btn");
-const importStatus        = document.getElementById("import-status");
+const importProfileBtn       = document.getElementById("import-profile-btn");
+const importFileInput        = document.getElementById("import-file-input");
+const profileSelectRow       = document.getElementById("profile-select-row");
+const profileDropdownTrigger = document.getElementById("profile-dropdown-trigger");
+const profileDropdownList    = document.getElementById("profile-dropdown-list");
+const profileApplyBtn        = document.getElementById("profile-apply-btn");
+const importStatus           = document.getElementById("import-status");
 const deviceSelect        = document.getElementById("device-select");
 const keyPopup            = document.getElementById("key-popup");
 const keyPopupTitle       = document.getElementById("key-popup-title");
@@ -243,7 +244,7 @@ const CYRO_SECTIONS = [
         transition: "Move your thumb over to the 5-way cluster",
         ids: ["cy-r2c3","cy-r2c4","cy-r2c5","cy-r2c6",
               "cy-r3c3","cy-r3c4","cy-r3c5","cy-r3c6",
-              "cy-r4c3","cy-r4c4","cy-r4c5","cy-r4c6","cy-r4c7",
+              "cy-r4c4","cy-r4c5","cy-r4c6","cy-r4c7",
               "cy-r5c4","cy-r5c5","cy-r5c6","cy-r5c7"],
     },
     {
@@ -264,7 +265,7 @@ const CYRO_LH_SECTIONS = [
         transition: "Move your thumb over to the 5-way cluster",
         ids: ["cy-lh-r2c3","cy-lh-r2c4","cy-lh-r2c5","cy-lh-r2c6",
               "cy-lh-r3c3","cy-lh-r3c4","cy-lh-r3c5","cy-lh-r3c6",
-              "cy-lh-r4c3","cy-lh-r4c4","cy-lh-r4c5","cy-lh-r4c6","cy-lh-r4c7",
+              "cy-lh-r4c4","cy-lh-r4c5","cy-lh-r4c6","cy-lh-r4c7",
               "cy-lh-r5c4","cy-lh-r5c5","cy-lh-r5c6","cy-lh-r5c7"],
     },
     {
@@ -288,6 +289,7 @@ const DEVICE_CONFIGS = {
         contentWidth: 665,
         autoDetectDevice: 8,
         calibrationSections: CYBORG2_SECTIONS,
+        knownPid: "12F7",
     },
     'cyborg2-lefty': {
         name: 'RH Cyborg II',
@@ -297,6 +299,7 @@ const DEVICE_CONFIGS = {
         contentWidth: 665,
         autoDetectDevice: null,
         calibrationSections: CYBORG2_SECTIONS,
+        knownPid: "12F7",
     },
     'keyzen': {
         name: 'LH Keyzen',
@@ -306,6 +309,7 @@ const DEVICE_CONFIGS = {
         contentWidth: 631,
         autoDetectDevice: [8, 9],
         calibrationSections: KEYZEN_SECTIONS,
+        knownPid: "13EA",
     },
     'cyro': {
         name: 'RH Cyro',
@@ -315,6 +319,7 @@ const DEVICE_CONFIGS = {
         contentWidth: 581,
         autoDetectDevice: 4,
         calibrationSections: CYRO_SECTIONS,
+        knownPid: "1103",
     },
     'cyro-lh': {
         name: 'LH Cyro',
@@ -324,6 +329,7 @@ const DEVICE_CONFIGS = {
         contentWidth: 497,
         autoDetectDevice: null,
         calibrationSections: CYRO_LH_SECTIONS,
+        knownPid: "1103",
     },
     'keyzen-rh': {
         name: 'RH Keyzen',
@@ -333,6 +339,7 @@ const DEVICE_CONFIGS = {
         contentWidth: 697,
         autoDetectDevice: null,
         calibrationSections: KEYZEN_RH_SECTIONS,
+        knownPid: "13EA",
     },
 };
 
@@ -408,7 +415,7 @@ function connectWebSocket() {
         setBackendStatus(true);
         // If no device_info arrives within 3s, show a nudge
         deviceDetectTimer = setTimeout(() => {
-            if (!devicePid) {
+            if (!connectedPids.length) {
                 calibrationStatus.textContent = "No Azeron detected — check USB connection";
                 calibrationStatus.style.color = "#f0a500";
                 calibrationStatus.style.display = "block";
@@ -435,7 +442,7 @@ function connectWebSocket() {
 
         if (msg.type === "device_info") {
             clearTimeout(deviceDetectTimer);
-            handleDeviceInfo(msg.pid);
+            handleDeviceInfo(msg.pids || []);
             return;
         }
 
@@ -478,7 +485,7 @@ function getCalibrationOrder() {
             _calibrationOrder = sections.flatMap(s => s.ids);
         } else {
             const cfg = DEVICE_CONFIGS[activeDeviceId];
-            _calibrationOrder = (cfg?.keys || keys).map(k => k.id);
+            _calibrationOrder = (cfg?.keys || keys).filter(k => k.type !== "scroll").map(k => k.id);
         }
     }
     return _calibrationOrder;
@@ -507,33 +514,38 @@ function isSectionBoundary(step) {
 let calibrationActive = false;
 let calibrationStep   = 0;
 let calibrationMap    = {};
-let devicePid         = null;
+let connectedPids     = [];
 
-function handleDeviceInfo(pid) {
-    devicePid = pid;
-    if (!pid) return;
-    if (SUPPORTED_PIDS[pid]) {
-        calibrationStatus.textContent = `Hardware supported natively (${SUPPORTED_PIDS[pid]})`;
+function updateCalibrationStatus() {
+    const knownPid = DEVICE_CONFIGS[activeDeviceId]?.knownPid;
+    if (knownPid && SUPPORTED_PIDS[knownPid]) {
+        calibrationStatus.textContent = `Hardware supported natively (${SUPPORTED_PIDS[knownPid]})`;
+        calibrationStatus.style.color = "";
         calibrationStatus.style.display = "block";
-        calibrateBtn.textContent = "Recalibrate Buttons…";
-    } else {
-        const saved = loadCalibration();
-        if (saved) {
-            calibrationStatus.textContent = "Calibrated — highlights active";
-            calibrationStatus.style.color = "#aaa";
-            calibrationStatus.style.display = "block";
-            calibrateBtn.textContent = "Recalibrate Buttons…";
-        } else if (DEFAULT_CALIBRATION_MAPS[activeDeviceId]) {
-            calibrationStatus.textContent = "Community calibration active — recalibrate to customise";
-            calibrationStatus.style.color = "#6ab0f5";
-            calibrationStatus.style.display = "block";
-            calibrateBtn.textContent = "Recalibrate Buttons…";
-        } else {
-            calibrationStatus.textContent = "Unknown hardware — calibration recommended";
-            calibrationStatus.style.color = "#f0a500";
-            calibrationStatus.style.display = "block";
-        }
+        calibrateBtn.textContent = "⚠ Recalibrate";
+        return;
     }
+    const saved = loadCalibration();
+    if (saved) {
+        calibrationStatus.textContent = "Calibrated — highlights active";
+        calibrationStatus.style.color = "#aaa";
+        calibrationStatus.style.display = "block";
+        calibrateBtn.textContent = "⚠ Recalibrate";
+    } else if (DEFAULT_CALIBRATION_MAPS[activeDeviceId]) {
+        calibrationStatus.textContent = "Community calibration active — recalibrate to customise";
+        calibrationStatus.style.color = "#6ab0f5";
+        calibrationStatus.style.display = "block";
+        calibrateBtn.textContent = "⚠ Recalibrate";
+    } else {
+        calibrationStatus.textContent = "Unknown hardware — calibration recommended";
+        calibrationStatus.style.color = "#f0a500";
+        calibrationStatus.style.display = "block";
+    }
+}
+
+function handleDeviceInfo(pids) {
+    connectedPids = pids;
+    updateCalibrationStatus();
 }
 
 function loadCalibration() {
@@ -575,12 +587,11 @@ function startCalibration() {
     calibrationActive    = true;
     calibrationComboKeys = [];
     if (calibrationComboTimer) { clearTimeout(calibrationComboTimer); calibrationComboTimer = null; }
-    calibrationStep   = 0;
-    calibrationMap    = {};
-    calibrationWizard.classList.add("active");
+    calibrationStep          = 0;
+    calibrationMap           = {};
+    calibrationCooldownUntil = 0;
+    optionsPanel.style.display = "none";
     overlayContent.classList.remove("edit-mode");
-    positionCalibrationPanel();
-    // Ensure the wizard buttons are always clickable regardless of clickthrough state
     if (isClickthrough) ipcRenderer.send("set-clickthrough", false);
     showCalibrationStep();
 }
@@ -633,10 +644,7 @@ function resumeFromSectionBreak() {
 }
 
 function advanceCalibrationStep() {
-    const boundary = isSectionBoundary(calibrationStep);
-    if (boundary) {
-        showSectionBreak(boundary);
-    } else if (calibrationStep >= getCalibrationOrder().length) {
+    if (calibrationStep >= getCalibrationOrder().length) {
         finishCalibration();
     } else {
         showCalibrationStep();
@@ -664,8 +672,10 @@ function showCalibrationStep() {
     startCalibrationTimer();
 }
 
-let calibrationComboKeys  = [];
-let calibrationComboTimer = null;
+let calibrationComboKeys     = [];
+let calibrationComboTimer    = null;
+let calibrationCooldownUntil = 0;
+const CALIBRATION_COOLDOWN_MS = 400;
 
 function flushCalibrationCombo() {
     calibrationComboTimer = null;
@@ -677,10 +687,12 @@ function flushCalibrationCombo() {
     // Store as a single string for one key, or array for multi-key binds (e.g. I+O)
     calibrationMap[elementId] = collected.length === 1 ? collected[0] : collected;
     calibrationStep++;
+    calibrationCooldownUntil = Date.now() + CALIBRATION_COOLDOWN_MS;
     advanceCalibrationStep();
 }
 
 function calibrationRecordKey(key) {
+    if (Date.now() < calibrationCooldownUntil) return;
     calibrationComboKeys.push(key);
     if (calibrationComboTimer) clearTimeout(calibrationComboTimer);
     // 100ms window — long enough to catch the second key of I+O, fast enough not to feel slow
@@ -698,6 +710,9 @@ async function submitCalibrationData(map) {
     if (SUPABASE_URL.includes("YOUR_PROJECT_ID") || SUPABASE_KEY.includes("YOUR_ANON")) return;
     try {
         const version = await ipcRenderer.invoke("get-version");
+        const entries      = Object.values(map);
+        const total_count  = entries.length;
+        const mapped_count = entries.filter(v => v !== null).length;
         await fetch(`${SUPABASE_URL}/rest/v1/calibrations`, {
             method: "POST",
             headers: {
@@ -708,8 +723,10 @@ async function submitCalibrationData(map) {
             },
             body: JSON.stringify({
                 device_id:       activeDeviceId,
-                pid:             devicePid || null,
+                pid:             DEVICE_CONFIGS[activeDeviceId]?.knownPid || null,
                 calibration_map: JSON.stringify(map),
+                total_count,
+                mapped_count,
                 app_version:     version,
                 submitted_at:    new Date().toISOString(),
             }),
@@ -721,7 +738,6 @@ async function submitCalibrationData(map) {
 
 function finishCalibration() {
     calibrationActive = false;
-    calibrationWizard.classList.remove("active");
     document.querySelectorAll(".key.calibrating").forEach(k => k.classList.remove("calibrating"));
     saveCalibration(calibrationMap);
     applyCalibration(calibrationMap);
@@ -729,7 +745,7 @@ function finishCalibration() {
     calibrationStatus.textContent = "Calibrated — highlights active";
     calibrationStatus.style.color = "#aaa";
     calibrationStatus.style.display = "block";
-    calibrateBtn.textContent = "Recalibrate Buttons…";
+    calibrateBtn.textContent = "⚠ Recalibrate";
     updateCalibrateHint();
     if (isClickthrough) ipcRenderer.send("set-clickthrough", true);
 }
@@ -739,9 +755,6 @@ function cancelCalibration() {
     if (calibrationComboTimer) { clearTimeout(calibrationComboTimer); calibrationComboTimer = null; }
     calibrationComboKeys = [];
     calibrationActive    = false;
-    calibrationWizard.classList.remove("active");
-    calibrationBreakView.style.display = "none";
-    calibrationStepsView.style.display = "";
     document.querySelectorAll(".key.calibrating").forEach(k => k.classList.remove("calibrating"));
     if (isClickthrough) ipcRenderer.send("set-clickthrough", true);
 }
@@ -816,31 +829,29 @@ applyDefaultCalibrationIfNeeded();
 closeButton.addEventListener("click", () => window.close());
 
 optionsButton.addEventListener("click", () => {
+    if (calibrationActive) { cancelCalibration(); return; }
     const opening = optionsPanel.style.display !== "flex";
-    if (opening) {
-        const spaceAbove   = optionsButton.getBoundingClientRect().top;
-        if (spaceAbove < 500) {
-            // Not enough room above — open downward, anchored below the key grid
-            let gridBottom = 0;
-            overlayContent.querySelectorAll(".key").forEach(k => {
-                const b = k.getBoundingClientRect().bottom;
-                if (b > gridBottom) gridBottom = b;
-            });
-            const uiTop        = optionsPanel.parentElement.getBoundingClientRect().top;
-            const topOffset    = gridBottom - uiTop + 8;
-            const availableH   = window.innerHeight - uiTop - topOffset - 8;
-            optionsPanel.style.top       = topOffset + "px";
-            optionsPanel.style.bottom    = "auto";
-            optionsPanel.style.maxHeight = Math.max(200, availableH) + "px";
-        } else {
-            optionsPanel.style.top       = "auto";
-            optionsPanel.style.bottom    = "46px";
-            optionsPanel.style.maxHeight = "";
-        }
-    }
     optionsPanel.style.display = opening ? "flex" : "none";
     overlayContent.classList.toggle("edit-mode", opening);
-    if (!opening) closeKeyPopup();
+    if (!opening) { closeKeyPopup(); return; }
+
+    const uiRect    = optionsUi.getBoundingClientRect();
+    const panelH    = optionsPanel.getBoundingClientRect().height;
+    const overlayRect = overlay.getBoundingClientRect();
+
+    // Preferred: float above the overlay (bottom of panel = top of overlay - 8px gap)
+    const desiredBottom = overlayRect.top - 8;
+    if (desiredBottom - panelH >= 0) {
+        optionsPanel.style.top = (desiredBottom - uiRect.top - panelH) + "px";
+    } else {
+        // Fallback: below the key grid
+        let maxKeyBottom = 0;
+        overlayContent.querySelectorAll(".key").forEach(el => {
+            const b = el.getBoundingClientRect().bottom;
+            if (b > maxKeyBottom) maxKeyBottom = b;
+        });
+        optionsPanel.style.top = (maxKeyBottom - uiRect.top + 8) + "px";
+    }
 });
 
 
@@ -943,7 +954,7 @@ document.addEventListener("mouseup", () => {
 
 unlockBtn.addEventListener("click", () => {
     isUnlocked = !isUnlocked;
-    unlockBtn.textContent = isUnlocked ? "Lock Position" : "Unlock Position";
+    unlockBtn.textContent = isUnlocked ? "Lock position" : "Unlock position";
     unlockBtn.classList.toggle("active", isUnlocked);
     overlay.style.cursor = isUnlocked ? "grab" : "";
 });
@@ -957,7 +968,7 @@ unlockBtn.addEventListener("click", () => {
 function setClickthrough(value) {
     isClickthrough = value;
     ipcRenderer.send("set-clickthrough", value);
-    clickthroughBtn.textContent = value ? "Disable Clickthrough" : "Enable Clickthrough";
+    clickthroughBtn.textContent = value ? "Disable clickthrough" : "Enable clickthrough";
     clickthroughBtn.classList.toggle("active", value);
     if (value) {
         optionsPanel.style.display = "none";
@@ -1009,7 +1020,7 @@ function updateMonitorBtn() {
     if (displays.length <= 1) { monitorBtn.style.display = "none"; return; }
     monitorBtn.style.display = "";
     const d = displays[idx] || displays[0];
-    monitorBtn.textContent = `Monitor: ${idx + 1} / ${displays.length}  (${d.bounds.width}×${d.bounds.height})`;
+    monitorBtn.innerHTML = `Monitor<br><span class="monitor-idx">${idx + 1}/${displays.length}</span>`;
 }
 
 async function switchToDisplay(displayId) {
@@ -1154,16 +1165,15 @@ function buildKeybindString(keyVal, metaValues) {
 }
 
 function applyAzeronProfile(profile) {
-    // Auto-detect device from v2 export metaData.
-    // If the active device already claims this device number, keep it — multiple devices
-    // (e.g., Keyzen and Cyborg II) can share the same exported device number.
     const deviceNum = profile.metaData?.device;
     if (deviceNum !== undefined) {
         const deviceMatches = (ad) => Array.isArray(ad) ? ad.includes(deviceNum) : ad === deviceNum;
         const currentCfg = DEVICE_CONFIGS[activeDeviceId];
         if (!deviceMatches(currentCfg?.autoDetectDevice)) {
             const match = Object.entries(DEVICE_CONFIGS).find(([, cfg]) => deviceMatches(cfg.autoDetectDevice));
-            if (match) switchDevice(match[0]);
+            const expectedName = match ? DEVICE_CONFIGS[match[0]].name : "a different device";
+            showImportStatus(`Profile is for ${expectedName} — switch to that device first, then import again.`);
+            return null;
         }
     }
 
@@ -1294,7 +1304,8 @@ function applyAzeronProfile(profile) {
 let importedProfiles  = (() => {
     try { return JSON.parse(localStorage.getItem("importedProfiles") || "[]"); } catch { return []; }
 })();
-let importStatusTimer = null;
+let selectedProfileIdx = 0;
+let importStatusTimer  = null;
 
 function showImportStatus(msg) {
     importStatus.textContent = msg;
@@ -1305,13 +1316,45 @@ function showImportStatus(msg) {
 
 function renderProfileSelect() {
     if (!importedProfiles.length) { profileSelectRow.style.display = "none"; return; }
-    profileSelect.innerHTML = "";
+    if (selectedProfileIdx >= importedProfiles.length) {
+        selectedProfileIdx = importedProfiles.length - 1;
+    }
+
+    profileDropdownList.innerHTML = "";
     importedProfiles.forEach((p, i) => {
-        const opt = document.createElement("option");
-        opt.value = i;
-        opt.textContent = p.name || `Profile ${i + 1}`;
-        profileSelect.appendChild(opt);
+        const item = document.createElement("div");
+        item.className = "profile-dropdown-item" + (i === selectedProfileIdx ? " selected" : "");
+
+        const nameEl = document.createElement("span");
+        nameEl.className = "profile-dropdown-item-name";
+        nameEl.textContent = p.name || `Profile ${i + 1}`;
+        item.addEventListener("click", () => {
+            selectedProfileIdx = i;
+            profileDropdownList.style.display = "none";
+            renderProfileSelect();
+        });
+
+        const removeBtn = document.createElement("button");
+        removeBtn.className = "profile-item-remove";
+        removeBtn.textContent = "✕";
+        removeBtn.title = "Remove";
+        removeBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const removedName = importedProfiles[i].name;
+            importedProfiles.splice(i, 1);
+            localStorage.setItem("importedProfiles", JSON.stringify(importedProfiles));
+            renderProfileSelect();
+            profileDropdownList.style.display = "";
+            showImportStatus(`Removed "${removedName}".`);
+        });
+
+        item.appendChild(nameEl);
+        item.appendChild(removeBtn);
+        profileDropdownList.appendChild(item);
     });
+
+    const sel = importedProfiles[selectedProfileIdx];
+    profileDropdownTrigger.textContent = (sel?.name || `Profile ${selectedProfileIdx + 1}`) + " ▾";
     profileSelectRow.style.display = "flex";
 }
 
@@ -1330,10 +1373,11 @@ importFileInput.addEventListener("change", () => {
             importedProfiles = json.profiles || [];
             if (!importedProfiles.length) { showImportStatus("No profiles found in file."); return; }
             localStorage.setItem("importedProfiles", JSON.stringify(importedProfiles));
+            selectedProfileIdx = 0;
             renderProfileSelect();
             if (importedProfiles.length === 1) {
                 const n = applyAzeronProfile(importedProfiles[0]);
-                showImportStatus(`Imported "${importedProfiles[0].name}": ${n} keys updated.`);
+                if (n !== null) showImportStatus(`Imported "${importedProfiles[0].name}": ${n} keys updated.`);
             }
         } catch {
             showImportStatus("Failed to parse profile file.");
@@ -1342,11 +1386,17 @@ importFileInput.addEventListener("change", () => {
     reader.readAsText(file);
 });
 
+profileDropdownTrigger.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const isOpen = profileDropdownList.style.display !== "none";
+    profileDropdownList.style.display = isOpen ? "none" : "";
+});
+
 profileApplyBtn.addEventListener("click", () => {
-    const profile = importedProfiles[parseInt(profileSelect.value)];
+    const profile = importedProfiles[selectedProfileIdx];
     if (!profile) return;
     const n = applyAzeronProfile(profile);
-    showImportStatus(`Imported "${profile.name}": ${n} keys updated.`);
+    if (n !== null) showImportStatus(`Applied "${profile.name}": ${n} keys updated.`);
 });
 
 
@@ -1435,6 +1485,7 @@ function switchDevice(deviceId) {
 
     // Apply saved or community calibration for the new device
     applyDefaultCalibrationIfNeeded();
+    updateCalibrationStatus();
 }
 
 deviceSelect.addEventListener("change", () => {
@@ -1562,6 +1613,12 @@ document.addEventListener("click", (e) => {
     if (!keyPopup.contains(e.target) && !e.target.classList.contains("key")) closeKeyPopup();
 });
 
+document.addEventListener("click", (e) => {
+    if (!profileDropdownList.contains(e.target) && e.target !== profileDropdownTrigger) {
+        profileDropdownList.style.display = "none";
+    }
+});
+
 
 
 /* -----------------------------
@@ -1607,6 +1664,7 @@ document.addEventListener("click", (e) => {
     const hasCal      = !!localStorage.getItem("calibration_" + activeDeviceId);
     if (!hasKeybinds && !hasCal) {
         optionsPanel.style.display = "flex";
+        overlayContent.classList.add("edit-mode");
         ipcRenderer.send("set-clickthrough", false);
     }
 

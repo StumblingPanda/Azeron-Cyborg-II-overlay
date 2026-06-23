@@ -30,11 +30,29 @@ VK_NAMES = {
 
 # Win32 constants
 WM_INPUT         = 0x00FF
+RIM_TYPEMOUSE    = 0
 RIM_TYPEKEYBOARD = 1
 RIDI_DEVICENAME  = 0x20000007
 RID_INPUT        = 0x10000003
 RIDEV_INPUTSINK  = 0x00000100
 RI_KEY_BREAK     = 0x0001
+RI_KEY_E0        = 0x0002
+# Numpad keys send navigation VK codes when NumLock is off, but lack the E0 flag.
+# Dedicated nav cluster keys always have E0. Use MakeCode + no-E0 to identify true numpad.
+MAKECODE_TO_NUMPAD = {
+    0x47: "num7", 0x48: "num8", 0x49: "num9",
+    0x4B: "num4", 0x4C: "num5", 0x4D: "num6",
+    0x4F: "num1", 0x50: "num2", 0x51: "num3",
+    0x52: "num0", 0x53: "num.",
+}
+# (down_flag, up_flag, name)
+MOUSE_BUTTONS    = [
+    (0x0001, 0x0002, "mouse1"),
+    (0x0004, 0x0008, "mouse2"),
+    (0x0010, 0x0020, "mouse3"),
+    (0x0040, 0x0080, "mouse4"),
+    (0x0100, 0x0200, "mouse5"),
+]
 
 # Win32 structs
 class RAWINPUTDEVICELIST(ctypes.Structure):
@@ -66,8 +84,25 @@ class RAWINPUTHEADER(ctypes.Structure):
         ("wParam",  wintypes.WPARAM),
     ]
 
+class _RAWMOUSE_BUTTONS(ctypes.Structure):
+    _fields_ = [("usButtonFlags", ctypes.c_ushort), ("usButtonData", ctypes.c_ushort)]
+
+class _RAWMOUSE_UNION(ctypes.Union):
+    _fields_ = [("ulButtons", wintypes.ULONG), ("s", _RAWMOUSE_BUTTONS)]
+
+class RAWMOUSE(ctypes.Structure):
+    _anonymous_ = ("_u",)
+    _fields_ = [
+        ("usFlags",            ctypes.c_ushort),
+        ("_u",                 _RAWMOUSE_UNION),
+        ("ulRawButtons",       wintypes.ULONG),
+        ("lLastX",             wintypes.LONG),
+        ("lLastY",             wintypes.LONG),
+        ("ulExtraInformation", wintypes.ULONG),
+    ]
+
 class _RAWINPUT_DATA(ctypes.Union):
-    _fields_ = [("keyboard", RAWKEYBOARD), ("_pad", ctypes.c_byte * 40)]
+    _fields_ = [("keyboard", RAWKEYBOARD), ("mouse", RAWMOUSE), ("_pad", ctypes.c_byte * 40)]
 
 class RAWINPUT(ctypes.Structure):
     _anonymous_ = ("data",)
@@ -104,22 +139,23 @@ class MSG(ctypes.Structure):
 connected_clients = set()
 pending_combos    = {}
 async_loop        = None
-device_info       = {"pid": None}
+device_info       = {"pids": []}
 
 
 def find_azeron_handles():
-    """Return all raw input device handles whose HID path contains AZERON_VID."""
+    """Return (kb_handles, mouse_handles) for all Azeron raw input devices."""
     import re
     user32  = ctypes.windll.user32
     num     = wintypes.UINT(0)
     user32.GetRawInputDeviceList(None, ctypes.byref(num), ctypes.sizeof(RAWINPUTDEVICELIST))
     if not num.value:
-        return set()
+        return set(), set()
     devices = (RAWINPUTDEVICELIST * num.value)()
     user32.GetRawInputDeviceList(devices, ctypes.byref(num), ctypes.sizeof(RAWINPUTDEVICELIST))
-    handles = set()
+    kb_handles    = set()
+    mouse_handles = set()
     for dev in devices:
-        if dev.dwType != RIM_TYPEKEYBOARD:
+        if dev.dwType not in (RIM_TYPEKEYBOARD, RIM_TYPEMOUSE):
             continue
         sz = wintypes.UINT(0)
         user32.GetRawInputDeviceInfoW(dev.hDevice, RIDI_DEVICENAME, None, ctypes.byref(sz))
@@ -127,19 +163,28 @@ def find_azeron_handles():
             continue
         buf = ctypes.create_unicode_buffer(sz.value)
         user32.GetRawInputDeviceInfoW(dev.hDevice, RIDI_DEVICENAME, buf, ctypes.byref(sz))
-        if AZERON_VID.upper() in buf.value.upper():
-            print(f"Azeron device found: {buf.value}", flush=True)
-            m = re.search(r'PID_([0-9A-Fa-f]+)', buf.value, re.IGNORECASE)
-            if m:
-                device_info["pid"] = m.group(1).upper()
-                print(f"Azeron PID: {device_info['pid']}", flush=True)
-            handles.add(dev.hDevice)
-    return handles
+        if AZERON_VID.upper() not in buf.value.upper():
+            continue
+        print(f"Azeron device found: {buf.value}", flush=True)
+        m = re.search(r'PID_([0-9A-Fa-f]+)', buf.value, re.IGNORECASE)
+        if m:
+            pid = m.group(1).upper()
+            if pid not in device_info["pids"]:
+                device_info["pids"].append(pid)
+            print(f"Azeron PID: {pid}", flush=True)
+        if dev.dwType == RIM_TYPEKEYBOARD:
+            kb_handles.add(dev.hDevice)
+        else:
+            mouse_handles.add(dev.hDevice)
+    return kb_handles, mouse_handles
 
 
-def vkey_to_name(vk):
+def vkey_to_name(vk, flags=0, mcode=0):
     if 0x41 <= vk <= 0x5A: return chr(vk + 32)
     if 0x30 <= vk <= 0x39: return chr(vk)
+    # Numpad key with NumLock off: no E0 flag, MakeCode matches numpad range
+    if not (flags & RI_KEY_E0) and mcode in MAKECODE_TO_NUMPAD:
+        return MAKECODE_TO_NUMPAD[mcode]
     return VK_NAMES.get(vk)
 
 
@@ -156,7 +201,7 @@ def build_combo(key):
 async def websocket_handler(websocket):
     connected_clients.add(websocket)
     try:
-        await websocket.send(json.dumps({"type": "device_info", "pid": device_info["pid"]}))
+        await websocket.send(json.dumps({"type": "device_info", "pids": device_info["pids"]}))
         await websocket.wait_closed()
     finally:
         connected_clients.discard(websocket)
@@ -168,7 +213,7 @@ async def send_key_event(key, action):
         await asyncio.gather(*[c.send(msg) for c in connected_clients])
 
 
-def run_raw_input_loop(azeron_handles):
+def run_raw_input_loop(kb_handles, mouse_handles):
     user32    = ctypes.windll.user32
     kernel32  = ctypes.windll.kernel32
     hinstance = kernel32.GetModuleHandleW(None)
@@ -185,7 +230,7 @@ def run_raw_input_loop(azeron_handles):
             user32.GetRawInputData(lparam, RID_INPUT, buf, ctypes.byref(sz), ctypes.sizeof(RAWINPUTHEADER))
             raw = ctypes.cast(buf, ctypes.POINTER(RAWINPUT)).contents
 
-            if raw.header.hDevice in azeron_handles and raw.header.dwType == RIM_TYPEKEYBOARD:
+            if raw.header.hDevice in kb_handles and raw.header.dwType == RIM_TYPEKEYBOARD:
                 vk    = raw.keyboard.VKey
                 mcode = raw.keyboard.MakeCode
                 is_up = bool(raw.keyboard.Flags & RI_KEY_BREAK)
@@ -212,7 +257,7 @@ def run_raw_input_loop(azeron_handles):
                                     )
                 else:
                     mod_state["non_mod_pressed"] = True
-                    key = vkey_to_name(vk)
+                    key = vkey_to_name(vk, raw.keyboard.Flags, mcode)
                     if key:
                         if not is_up:
                             if mcode in pending_combos:
@@ -227,6 +272,22 @@ def run_raw_input_loop(azeron_handles):
                         if async_loop and async_loop.is_running():
                             asyncio.run_coroutine_threadsafe(
                                 send_key_event(combo, action), async_loop
+                            )
+
+            elif raw.header.hDevice in mouse_handles and raw.header.dwType == RIM_TYPEMOUSE:
+                flags = raw.mouse.usButtonFlags
+                for down_flag, up_flag, btn_name in MOUSE_BUTTONS:
+                    if flags & down_flag:
+                        print(f"{btn_name}:down", flush=True)
+                        if async_loop and async_loop.is_running():
+                            asyncio.run_coroutine_threadsafe(
+                                send_key_event(btn_name, "down"), async_loop
+                            )
+                    elif flags & up_flag:
+                        print(f"{btn_name}:up", flush=True)
+                        if async_loop and async_loop.is_running():
+                            asyncio.run_coroutine_threadsafe(
+                                send_key_event(btn_name, "up"), async_loop
                             )
         return user32.DefWindowProcW(hwnd, msg, wparam, lparam)
 
@@ -252,13 +313,19 @@ def run_raw_input_loop(azeron_handles):
         print(f"Failed to create message window (error {kernel32.GetLastError()})", flush=True)
         return
 
-    rid             = RAWINPUTDEVICE()
-    rid.usUsagePage = 0x01  # Generic Desktop Controls
-    rid.usUsage     = 0x06  # Keyboard
-    rid.dwFlags     = RIDEV_INPUTSINK
-    rid.hwndTarget  = hwnd
+    num_rid  = 2 if mouse_handles else 1
+    rids     = (RAWINPUTDEVICE * num_rid)()
+    rids[0].usUsagePage = 0x01
+    rids[0].usUsage     = 0x06  # Keyboard
+    rids[0].dwFlags     = RIDEV_INPUTSINK
+    rids[0].hwndTarget  = hwnd
+    if mouse_handles:
+        rids[1].usUsagePage = 0x01
+        rids[1].usUsage     = 0x02  # Mouse
+        rids[1].dwFlags     = RIDEV_INPUTSINK
+        rids[1].hwndTarget  = hwnd
 
-    if not user32.RegisterRawInputDevices(ctypes.byref(rid), 1, ctypes.sizeof(RAWINPUTDEVICE)):
+    if not user32.RegisterRawInputDevices(rids, num_rid, ctypes.sizeof(RAWINPUTDEVICE)):
         print("Failed to register raw input devices", flush=True)
         return
 
@@ -273,12 +340,14 @@ async def main():
     global async_loop
     async_loop = asyncio.get_running_loop()
 
-    azeron_handles = find_azeron_handles()
-    if not azeron_handles:
+    kb_handles, mouse_handles = find_azeron_handles()
+    if not kb_handles:
         print("No Azeron device found — make sure it is connected and try again.", flush=True)
         return
+    if mouse_handles:
+        print(f"Azeron mouse interface found ({len(mouse_handles)} handle(s))", flush=True)
 
-    threading.Thread(target=run_raw_input_loop, args=(azeron_handles,), daemon=True).start()
+    threading.Thread(target=run_raw_input_loop, args=(kb_handles, mouse_handles), daemon=True).start()
 
     print("WebSocket server starting...", flush=True)
     try:
