@@ -1,6 +1,6 @@
 {
   "name": "azeron-overlay",
-  "version": "1.4.5",
+  "version": "1.4.6",
   "description": "Azeron Cyborg II keypad overlay for gaming",
   "author": "stumblingpanda",
   "main": "main.js",
@@ -37,11 +37,7 @@
     "publish": {
       "provider": "github",
       "owner": "StumblingPanda",
-<<<<<<< HEAD
-      "repo": "Azeron-Cyborg-II-overlay",
-=======
       "repo": "Azeron-Overlay",
->>>>>>> 628ad2e (Fix calibration key highlighter; update publish repo name)
       "releaseType": "release"
     }
   },
