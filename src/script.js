@@ -450,14 +450,21 @@ function connectWebSocket() {
 
         if (msg.type === "device_info") {
             clearTimeout(deviceDetectTimer);
-            handleDeviceInfo(msg.pids || []);
+            handleDeviceInfo(msg.pids || [], msg.devices || []);
             return;
         }
 
-        const { key, action } = msg;
+        const { key, action, device } = msg;
+
+        // Multi-device filtering: when >1 Azeron is connected, only react to the
+        // device that was used to calibrate this layout (bound during calibration).
+        if (connectedDeviceIds.length > 1 && device) {
+            const boundDev = localStorage.getItem("boundDevice_" + activeDeviceId);
+            if (boundDev && connectedDeviceIds.includes(boundDev) && boundDev !== device) return;
+        }
 
         if (calibrationActive && action === "down") {
-            calibrationRecordKey(key);
+            calibrationRecordKey(key, device);
             return;
         }
 
@@ -522,7 +529,8 @@ function isSectionBoundary(step) {
 let calibrationActive = false;
 let calibrationStep   = 0;
 let calibrationMap    = {};
-let connectedPids     = [];
+let connectedPids      = [];
+let connectedDeviceIds = [];
 
 function updateCalibrationStatus() {
     const knownPid = DEVICE_CONFIGS[activeDeviceId]?.knownPid;
@@ -551,8 +559,9 @@ function updateCalibrationStatus() {
     }
 }
 
-function handleDeviceInfo(pids) {
-    connectedPids = pids;
+function handleDeviceInfo(pids, deviceIds) {
+    connectedPids      = pids;
+    connectedDeviceIds = deviceIds;
     updateCalibrationStatus();
 }
 
@@ -594,6 +603,7 @@ function positionCalibrationPanel() {
 function startCalibration() {
     calibrationActive    = true;
     calibrationComboKeys = [];
+    localStorage.removeItem("boundDevice_" + activeDeviceId);
     if (calibrationComboTimer) { clearTimeout(calibrationComboTimer); calibrationComboTimer = null; }
     calibrationStep          = 0;
     calibrationMap           = {};
@@ -700,8 +710,12 @@ function flushCalibrationCombo() {
     advanceCalibrationStep();
 }
 
-function calibrationRecordKey(key) {
+function calibrationRecordKey(key, device) {
     if (Date.now() < calibrationCooldownUntil) return;
+    // Auto-bind this physical device to the current layout on the first key press.
+    if (device && connectedDeviceIds.length > 1) {
+        localStorage.setItem("boundDevice_" + activeDeviceId, device);
+    }
     calibrationComboKeys.push(key);
     if (calibrationComboTimer) clearTimeout(calibrationComboTimer);
     // 100ms window — long enough to catch the second key of I+O, fast enough not to feel slow

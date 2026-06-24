@@ -143,7 +143,8 @@ class MSG(ctypes.Structure):
 connected_clients = set()
 pending_combos    = {}
 async_loop        = None
-device_info       = {"pids": []}
+device_info       = {"pids": [], "devices": []}
+handle_to_dev_id  = {}  # hDevice → stable instance-ID string
 
 
 def find_azeron_handles():
@@ -171,11 +172,17 @@ def find_azeron_handles():
             continue
         print(f"Azeron device found: {buf.value}", flush=True)
         m = re.search(r'PID_([0-9A-Fa-f]+)', buf.value, re.IGNORECASE)
-        if m:
-            pid = m.group(1).upper()
-            if pid not in device_info["pids"]:
-                device_info["pids"].append(pid)
-            print(f"Azeron PID: {pid}", flush=True)
+        pid = m.group(1).upper() if m else ""
+        if pid and pid not in device_info["pids"]:
+            device_info["pids"].append(pid)
+        # Stable instance ID: the segment between the 2nd and 3rd '#' in the NT path.
+        # e.g. \\?\HID#VID_16D0&PID_12F7#7&1a2b3c4d&0&0000#{guid} → "7&1a2b3c4d&0&0000"
+        path_parts = buf.value.split('#')
+        dev_id = path_parts[2] if len(path_parts) > 2 else pid
+        handle_to_dev_id[dev.hDevice] = dev_id
+        if dev_id not in device_info["devices"]:
+            device_info["devices"].append(dev_id)
+        print(f"Azeron PID: {pid}  dev_id: {dev_id}", flush=True)
         if dev.dwType == RIM_TYPEKEYBOARD:
             kb_handles.add(dev.hDevice)
         else:
@@ -205,7 +212,7 @@ def build_combo(key):
 async def websocket_handler(websocket):
     connected_clients.add(websocket)
     try:
-        await websocket.send(json.dumps({"type": "device_info", "pids": device_info["pids"]}))
+        await websocket.send(json.dumps({"type": "device_info", "pids": device_info["pids"], "devices": device_info["devices"]}))
         await websocket.wait_closed()
     finally:
         connected_clients.discard(websocket)
@@ -213,19 +220,21 @@ async def websocket_handler(websocket):
 
 async def broadcast_device_info():
     if connected_clients:
-        msg = json.dumps({"type": "device_info", "pids": device_info["pids"]})
+        msg = json.dumps({"type": "device_info", "pids": device_info["pids"], "devices": device_info["devices"]})
         await asyncio.gather(*[c.send(msg) for c in connected_clients])
 
 
-async def send_key_event(key, action):
+async def send_key_event(key, action, dev_id=""):
     if connected_clients:
-        msg = json.dumps({"key": key, "action": action})
+        msg = json.dumps({"key": key, "action": action, "device": dev_id})
         await asyncio.gather(*[c.send(msg) for c in connected_clients])
 
 
 def refresh_azeron_handles(kb_set, mouse_set):
     """Re-enumerate all connected Azeron devices and update handle sets in-place."""
     device_info["pids"].clear()
+    device_info["devices"].clear()
+    handle_to_dev_id.clear()
     new_kb, new_mouse = find_azeron_handles()
     kb_set.clear()
     kb_set.update(new_kb)
@@ -253,6 +262,7 @@ def run_raw_input_loop(kb_handles, mouse_handles):
                 vk    = raw.keyboard.VKey
                 mcode = raw.keyboard.MakeCode
                 is_up = bool(raw.keyboard.Flags & RI_KEY_BREAK)
+                dev_id = handle_to_dev_id.get(raw.header.hDevice, "")
 
                 if vk in MODIFIER_VKS:
                     name = MODIFIER_NAMES.get(vk)
@@ -260,7 +270,7 @@ def run_raw_input_loop(kb_handles, mouse_handles):
                         action = "up" if is_up else "down"
                         print(f"{name}:{action}", flush=True)
                         asyncio.run_coroutine_threadsafe(
-                            send_key_event(name, action), async_loop
+                            send_key_event(name, action, dev_id), async_loop
                         )
                 else:
                     key = vkey_to_name(vk, raw.keyboard.Flags, mcode)
@@ -277,23 +287,24 @@ def run_raw_input_loop(kb_handles, mouse_handles):
                         print(combo, flush=True)
                         if async_loop and async_loop.is_running():
                             asyncio.run_coroutine_threadsafe(
-                                send_key_event(combo, action), async_loop
+                                send_key_event(combo, action, dev_id), async_loop
                             )
 
             elif raw.header.hDevice in mouse_handles and raw.header.dwType == RIM_TYPEMOUSE:
+                dev_id = handle_to_dev_id.get(raw.header.hDevice, "")
                 flags = raw.mouse.usButtonFlags
                 for down_flag, up_flag, btn_name in MOUSE_BUTTONS:
                     if flags & down_flag:
                         print(f"{btn_name}:down", flush=True)
                         if async_loop and async_loop.is_running():
                             asyncio.run_coroutine_threadsafe(
-                                send_key_event(btn_name, "down"), async_loop
+                                send_key_event(btn_name, "down", dev_id), async_loop
                             )
                     elif flags & up_flag:
                         print(f"{btn_name}:up", flush=True)
                         if async_loop and async_loop.is_running():
                             asyncio.run_coroutine_threadsafe(
-                                send_key_event(btn_name, "up"), async_loop
+                                send_key_event(btn_name, "up", dev_id), async_loop
                             )
         elif msg == WM_INPUT_DEVICE_CHANGE:
             refresh_azeron_handles(kb_handles, mouse_handles)

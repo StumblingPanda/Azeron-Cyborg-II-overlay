@@ -7,7 +7,8 @@ All notable changes to Azeron Overlay are documented here.
 ## [1.4.8] - 2026-06-24
 
 ### Fixed
-- Device swap / hotplug now works — unplugging one Azeron and plugging in another (e.g. swapping RH for LH Cyborg II) previously left the overlay deaf to all input because the new device received a new OS handle that was never registered. The listener now handles `WM_INPUT_DEVICE_CHANGE` with `RIDEV_DEVNOTIFY`, refreshing its internal handle sets whenever a device connects or disconnects, and re-broadcasts the updated PID list to the renderer
+- Device swap / hotplug now works — unplugging one Azeron and plugging in another previously left the overlay deaf because the new device received a new OS handle that was never registered. The listener now handles `WM_INPUT_DEVICE_CHANGE` with `RIDEV_DEVNOTIFY`, refreshing handle sets on connect/disconnect and re-broadcasting the updated device list to the renderer
+- Dual-device support — when two Azerons are connected simultaneously (e.g. a standard and a custom-modded unit), each layout now binds to whichever physical device was used during its calibration. Key events from the other device are ignored, so switching the overlay between LH and RH layouts correctly highlights only the active device's button presses. Binding is recorded automatically on the first key press of calibration and cleared when recalibration starts
 
 ---
 
