@@ -13,10 +13,10 @@ for any hardware revision without needing a profile export.
 | Device | Layout | Calibration Wizard | Profile Import |
 |---|---|---|---|
 | LH Cyborg II | ✅ | ✅ | ✅ |
-| RH Cyborg II | ✅ | ❓ | ❓ |
-| LH Keyzen | ✅ | ❓ | ❓ |
+| RH Cyborg II | ✅ | ✅ | ❓ |
+| LH Keyzen | ✅ | ✅ | ❓ |
 | RH Keyzen | ✅ | ❓ | ❓ |
-| RH Cyro | ✅ | ❓ | ❓ |
+| RH Cyro | ✅ | ✅ | ❓ |
 | LH Cyro | ✅ | ❓ | ❓ |
 
 ❓ = untested / community exports not yet collected
